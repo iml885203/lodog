@@ -1,4 +1,4 @@
-# Benchmark tasks 
+# Benchmark tasks
 
 Target: anonymized backoffice fixture. Configure a compatible test upstream before running benchmarks.
 Run with `ENFORCE_PERMISSION_CHECKS=true` — in Development, Backoffice otherwise bypasses auth entirely.

@@ -145,4 +145,3 @@ L4 列出一支 API 缺的端點：L2、L3 的任務 tool 會走到 4 個存提�
 Keycloak Admin REST API 有 415 個 operation<!-- lodog-number: operations cases/keycloak/spec/openapi.json 415 -->，2 個的 body 是 `text/plain`，gateway 不轉發，所以是 413 個 tool；Keycloak 自己的文件已經寫了部分說明和錯誤回應，L0 就比 Backoffice 高。L2、L3 用同一份 25 個任務 tool，L3 套上的 policy 把其中 3 個判成 `credential`（hide），剩 22 個。overlay、workflows、policy 都沒經人工審核（[cases/keycloak](../cases/keycloak/README.md)）。
 
 Keycloak 的單筆 GET 很齊，L3 的 L4 只列出一支缺的端點（原始文件／L0 另有組織群組成員那一支）：把使用者加入、移出群組（`PUT`／`DELETE …/users/{user-id}/groups/{groupId}`）之後，只能翻分頁的 `GET …/users/{user-id}/groups` 確認，建議 `GET …/users/{user-id}/groups/{groupId}`。run 裡 agent 用 `GET /users?search=` 找人不算證據，因為 `GET /users/{id}` 存在。
-

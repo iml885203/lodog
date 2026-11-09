@@ -63,4 +63,3 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 `cases/backoffice` 是去識別化的離線回歸測資，保留測試需要的 API 與 workflow 結構；沒有附上可部署的原始服務。`cases/keycloak` 使用公開 API。實際環境設定、公司案例、實際 benchmark 紀錄與舊 Git 歷史均不隨此版本提供。
 
 報告頁可用 `make report-preview` 從合成測資產生。外部 acceptance 測試需要自行準備相容的測試服務。
-
