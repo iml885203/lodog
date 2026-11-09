@@ -82,7 +82,7 @@ func withItem(items []L4Item, it L4Item) []L4Item {
 func capRuns(list []MissingEndpoint) []MissingEndpoint {
 	for i, e := range list {
 		if len(e.Runs) > maxRunEvidence {
-			list[i].Runs = slices.Concat(e.Runs[:maxRunEvidence], []string{fmt.Sprintf("…還有 %d 筆", len(e.Runs)-maxRunEvidence)})
+			list[i].Runs = slices.Concat(e.Runs[:maxRunEvidence], []Text{say("rd.run.more", len(e.Runs)-maxRunEvidence)})
 		}
 	}
 	return list
@@ -143,9 +143,9 @@ func (ev *runEvidence) write(label string, op spec.Operation, after []RunCall) {
 	}
 	switch {
 	case scanned:
-		ev.note(e, fmt.Sprintf("%s：%s 之後翻列表找回剛寫的那筆", label, name(op)))
+		ev.note(e, say("rd.run.scanned", label, name(op)))
 	case !read:
-		ev.note(e, fmt.Sprintf("%s：%s 之後沒有任何讀取，無法確認寫入結果", label, name(op)))
+		ev.note(e, say("rd.run.noread", label, name(op)))
 	}
 }
 
@@ -164,7 +164,7 @@ func (ev *runEvidence) scans(label string, scans map[string]*listScan) {
 		}
 		e := ev.set.at("GET", strings.TrimRight(s.op.Path, "/")+"/{id}")
 		e.List = n
-		ev.note(e, fmt.Sprintf("%s：同一題成功叫了 %d 次 %s", label, s.calls, n))
+		ev.note(e, say("rd.run.repeat", label, s.calls, n))
 	}
 }
 
@@ -173,8 +173,8 @@ type listScan struct {
 	calls int
 }
 
-func (ev *runEvidence) note(e *MissingEndpoint, line string) {
-	if !contains(e.Runs, line) {
+func (ev *runEvidence) note(e *MissingEndpoint, line Text) {
+	if !slices.ContainsFunc(e.Runs, func(r Text) bool { return r.String() == line.String() }) {
 		e.Runs = append(e.Runs, line)
 		ev.added = true
 	}

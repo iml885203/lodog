@@ -39,7 +39,7 @@ func FromSource(ctx context.Context, client *http.Client, src string, sig Signal
 // FromGateway is what a gateway level gives the agent. The policy and the
 // agent's identity count only at L3, where the gateway enforces them; below
 // L3 the identity labels only file calls for the benchmark.
-func FromGateway(path string) (View, []string, error) {
+func FromGateway(path string) (View, []Text, error) {
 	cfg, err := casecfg.LoadConfig(path)
 	if err != nil {
 		return View{}, nil, err
@@ -73,7 +73,7 @@ func FromGateway(path string) (View, []string, error) {
 		v.Tasks[i] = t.TaskTool
 	}
 	v.TasksSkipped = plan.Skipped
-	return v, []string{taskNote(v)}, nil
+	return v, []Text{taskNote(v)}, nil
 }
 
 // CallChangesState reports whether a call recorded against this view changed

@@ -29,7 +29,9 @@ func runLines(l4 *L4) []string {
 	it, _ := item(l4, missingID)
 	var out []string
 	for _, e := range it.Endpoints {
-		out = append(out, e.Runs...)
+		for _, r := range e.Runs {
+			out = append(out, r.String())
+		}
 	}
 	return out
 }
@@ -62,8 +64,8 @@ func TestAWriteFollowedByAListScanOrByNothingIsEvidence(t *testing.T) {
 		t.Error("WithRuns changed the L4 it was given")
 	}
 	it, _ := item(after, missingID)
-	if !strings.Contains(it.Measured, "run") || strings.Contains(it.Instruction, "r1 T1") {
-		t.Errorf("measured = %q; the instruction must not carry run evidence: %s", it.Measured, it.Instruction)
+	if !strings.Contains(it.Measured.String(), "run") || strings.Contains(it.Instruction.String(), "r1 T1") {
+		t.Errorf("measured = %q; the instruction must not carry run evidence: %s", it.Measured.String(), it.Instruction.String())
 	}
 }
 
@@ -79,7 +81,7 @@ func TestAPagedListCalledTwiceWithAnswersAddsTheRecordGETItLacks(t *testing.T) {
 	if !ok || len(it.Endpoints) != 1 || it.Endpoints[0].Path != "/events/{id}" || it.Endpoints[0].List != "GET /events" {
 		t.Fatalf("item = %+v, want the record GET of /events only (a retry after an error is not a scan)", it)
 	}
-	if !strings.Contains(it.Endpoints[0].Runs[0], "成功叫了 2 次 GET /events") {
+	if !strings.Contains(it.Endpoints[0].Runs[0].String(), "成功叫了 2 次 GET /events") {
 		t.Errorf("runs = %v", it.Endpoints[0].Runs)
 	}
 }

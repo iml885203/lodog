@@ -1,7 +1,6 @@
 package readiness
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -45,13 +44,13 @@ type View struct {
 
 // Report is the static score of a view.
 type Report struct {
-	Source string   `json:"source"`
-	Level  string   `json:"level,omitempty"`
-	Points float64  `json:"points"`
-	Max    float64  `json:"max"`
-	Tools  int      `json:"tools"`
-	Checks []Check  `json:"checks"`
-	Notes  []string `json:"notes,omitempty"`
+	Source string  `json:"source"`
+	Level  string  `json:"level,omitempty"`
+	Points float64 `json:"points"`
+	Max    float64 `json:"max"`
+	Tools  int     `json:"tools"`
+	Checks []Check `json:"checks"`
+	Notes  []Text  `json:"notes,omitempty"`
 	// Skipped is every operation the gateway does not serve at this level,
 	// with the reason: the same list lodog serve warns about at start.
 	Skipped []Unserved `json:"skipped,omitempty"`
@@ -68,12 +67,12 @@ type Unserved struct {
 
 // Check is one scored property.
 type Check struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Points   float64  `json:"points"`
-	Max      float64  `json:"max"`
-	Detail   string   `json:"detail"`
-	Examples []string `json:"examples,omitempty"`
+	ID       string  `json:"id"`
+	Name     Text    `json:"name"`
+	Points   float64 `json:"points"`
+	Max      float64 `json:"max"`
+	Detail   Text    `json:"detail"`
+	Examples []Text  `json:"examples,omitempty"`
 }
 
 type checkFunc func(v View, tools []spec.Operation) Check
@@ -147,9 +146,9 @@ func descriptions(_ View, tools []spec.Operation) Check {
 		share = (share + ratio(paramsDone, params)) / 2
 	}
 	return Check{
-		ID: "descriptions", Name: "說明覆蓋", Max: weight, Points: weight * share,
-		Detail:   fmt.Sprintf("%d/%d 個 tool 有說明，%d/%d 個參數有說明", opsDone, len(tools), paramsDone, params),
-		Examples: examples(missing),
+		ID: "descriptions", Name: say("rd.check.descriptions"), Max: weight, Points: weight * share,
+		Detail:   say("rd.descriptions.detail", opsDone, len(tools), paramsDone, params),
+		Examples: examples(lits(missing)),
 	}
 }
 
@@ -160,8 +159,8 @@ func toolCount(_ View, tools []spec.Operation) Check {
 		share = float64(toolLimit) / float64(len(tools))
 	}
 	return Check{
-		ID: "tool_count", Name: "Tool 數量", Max: weight, Points: weight * share,
-		Detail: fmt.Sprintf("agent 看到 %d 個 tool；%d 個以內拿滿分", len(tools), toolLimit),
+		ID: "tool_count", Name: say("rd.check.tool_count"), Max: weight, Points: weight * share,
+		Detail: say("rd.tool_count.detail", len(tools), toolLimit),
 	}
 }
 
@@ -180,13 +179,13 @@ func riskDeclared(v View, tools []spec.Operation) Check {
 			missing = append(missing, name(op))
 		}
 	}
-	detail := fmt.Sprintf("%d/%d 個會改資料的 tool 明確宣告了風險等級", declared, mutating)
+	detail := say("rd.risk_declared.detail", declared, mutating)
 	if v.Policy != nil {
-		detail += fmt.Sprintf("；%d 個只落在 policy 的 default，不算宣告", len(missing))
+		detail = say("rd.risk_declared.policy", detail, len(missing))
 	}
 	return Check{
-		ID: "risk_declared", Name: "風險標記", Max: weight, Points: weight * ratioOr1(declared, mutating),
-		Detail: detail, Examples: examples(missing),
+		ID: "risk_declared", Name: say("rd.check.risk_declared"), Max: weight, Points: weight * ratioOr1(declared, mutating),
+		Detail: detail, Examples: examples(lits(missing)),
 	}
 }
 
@@ -203,7 +202,7 @@ func declaredRisk(v View, op spec.Operation) bool {
 
 func sideEffectGETs(v View, tools []spec.Operation) Check {
 	const weight = 3
-	var open []string
+	var open []Text
 	total := 0
 	for _, op := range tools {
 		word, ok := v.Signals.ScoreSideEffectGET(op)
@@ -212,7 +211,7 @@ func sideEffectGETs(v View, tools []spec.Operation) Check {
 		}
 		total++
 		if !neutralized(v, op) {
-			open = append(open, name(op)+"（"+word+"）")
+			open = append(open, say("rd.marked", name(op), word))
 		}
 	}
 	points := 0.0
@@ -220,8 +219,8 @@ func sideEffectGETs(v View, tools []spec.Operation) Check {
 		points = weight
 	}
 	return Check{
-		ID: "side_effect_gets", Name: "GET 卻會改資料", Max: weight, Points: points,
-		Detail:   fmt.Sprintf("%d 個 GET 的名字是動作；%d 個沒有被標風險或擋下，有任何一個就不給分", total, len(open)),
+		ID: "side_effect_gets", Name: say("rd.check.side_effect_gets"), Max: weight, Points: points,
+		Detail:   say("rd.side_effect_gets.detail", total, len(open)),
 		Examples: examples(open),
 	}
 }
@@ -248,18 +247,18 @@ func authDeclared(v View, tools []spec.Operation) Check {
 		share = (1 + ratio(secured, len(tools))) / 2
 	}
 	return Check{
-		ID: "auth_declared", Name: "Auth 宣告", Max: weight, Points: weight * share,
-		Detail: fmt.Sprintf("securitySchemes：%s；%d/%d 個 tool 標了 security", list(v.Doc.SecuritySchemes), secured, len(tools)),
+		ID: "auth_declared", Name: say("rd.check.auth_declared"), Max: weight, Points: weight * share,
+		Detail: say("rd.auth_declared.detail", list(v.Doc.SecuritySchemes), secured, len(tools)),
 	}
 }
 
 func agentIdentity(v View, _ []spec.Operation) Check {
 	const weight = 2
-	points, detail := 0.0, "呼叫帶不出是哪個 agent、代表哪個人"
+	points, detail := 0.0, say("rd.agent_identity.none")
 	if v.Identity {
-		points, detail = weight, "gateway 給 agent 自己的身份，並帶出代表的人"
+		points, detail = weight, say("rd.agent_identity.given")
 	}
-	return Check{ID: "agent_identity", Name: "Agent 身份", Max: weight, Points: points, Detail: detail}
+	return Check{ID: "agent_identity", Name: say("rd.check.agent_identity"), Max: weight, Points: points, Detail: detail}
 }
 
 func errorResponses(_ View, tools []spec.Operation) Check {
@@ -274,9 +273,9 @@ func errorResponses(_ View, tools []spec.Operation) Check {
 		}
 	}
 	return Check{
-		ID: "error_responses", Name: "錯誤回應", Max: weight, Points: weight * ratio(documented, len(tools)),
-		Detail:   fmt.Sprintf("%d/%d 個 tool 寫了 4xx/5xx 回應", documented, len(tools)),
-		Examples: examples(missing),
+		ID: "error_responses", Name: say("rd.check.error_responses"), Max: weight, Points: weight * ratio(documented, len(tools)),
+		Detail:   say("rd.error_responses.detail", documented, len(tools)),
+		Examples: examples(lits(missing)),
 	}
 }
 
@@ -316,13 +315,13 @@ func paging(_ View, tools []spec.Operation) Check {
 		}
 	}
 	if lists == 0 {
-		return Check{ID: "paging", Name: "分頁一致", Max: weight, Points: weight, Detail: "沒有分頁的列表"}
+		return Check{ID: "paging", Name: say("rd.check.paging"), Max: weight, Points: weight, Detail: say("rd.paging.nolists")}
 	}
 	common, most := mostCommon(conventions)
 	share := (ratio(most, lists) + ratio(bounded, lists)) / 2
 	return Check{
-		ID: "paging", Name: "分頁一致", Max: weight, Points: weight * share,
-		Detail: fmt.Sprintf("%d 個列表；%d 個用最常見的分頁參數 %s；%d 個寫了 page size 上限", lists, most, common, bounded),
+		ID: "paging", Name: say("rd.check.paging"), Max: weight, Points: weight * share,
+		Detail: say("rd.paging.detail", lists, most, common, bounded),
 	}
 }
 
@@ -340,18 +339,18 @@ func name(op spec.Operation) string {
 	return op.Method + " " + op.Path
 }
 
-func examples(xs []string) []string {
+func examples(xs []Text) []Text {
 	if len(xs) > maxExamples {
-		return append(xs[:maxExamples:maxExamples], fmt.Sprintf("…還有 %d 個", len(xs)-maxExamples))
+		return append(xs[:maxExamples:maxExamples], say("rd.more", len(xs)-maxExamples))
 	}
 	return xs
 }
 
-func list(xs []string) string {
+func list(xs []string) Text {
 	if len(xs) == 0 {
-		return "無"
+		return say("rd.none")
 	}
-	return strings.Join(xs, ", ")
+	return Lit(strings.Join(xs, ", "))
 }
 
 func ratio(n, d int) float64 {

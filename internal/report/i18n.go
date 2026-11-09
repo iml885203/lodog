@@ -6,13 +6,18 @@ import (
 	"html/template"
 	"sort"
 	"strings"
+
+	"github.com/iml885203/lodog/internal/readiness"
 )
 
 // The page speaks Traditional Chinese and English, switched in the browser.
 // Every fixed sentence is a key in the dictionaries (i18n_zh.go, i18n_en.go).
 // A piece of text that comes from the data (a task's wording, an agent's
-// answer, an API path, an L4 instruction) is never a key: it is passed in as
-// an argument or as a raw Msg and shown as it is.
+// answer, an API path) is never a key: it is passed in as an argument or as a
+// raw Msg and shown as it is. The sentences of the static score and its L4
+// list come from readiness as readiness.Text (a key and its arguments): their
+// Chinese is readiness.Texts, which the Chinese dictionary takes as it is, and
+// their English is in i18n_en.go (TextMsg).
 
 // Langs are the page's languages; the first is what the HTML is written in.
 var Langs = []string{"zh", "en"}
@@ -20,22 +25,64 @@ var Langs = []string{"zh", "en"}
 // Msg is one sentence of the page: a dictionary key with its arguments, or a
 // literal (Raw) that is shown as it is in both languages.
 //
-// An argument that starts with "@" names a key without arguments ("@level.L1"
-// is the level's name); one that starts with "#" is a comma-separated list
-// joined with the language's separator.
+// An argument is a string or a Msg of its own. A string that starts with "@"
+// names a key without arguments ("@level.L1" is the level's name); one that
+// starts with "#" is a comma-separated list joined with the language's
+// separator.
 type Msg struct {
-	Key  string   `json:"k,omitempty"`
-	Args []string `json:"a,omitempty"`
-	Raw  string   `json:"r,omitempty"`
+	Key  string `json:"k,omitempty"`
+	Args []any  `json:"a,omitempty"`
+	Raw  string `json:"r,omitempty"`
 }
 
-// M is the sentence key with args; anything that is not a string is printed.
+// M is the sentence key with args; a Msg argument is a sentence of its own,
+// anything else that is not a string is printed.
 func M(key string, args ...any) Msg {
 	m := Msg{Key: key}
 	for _, a := range args {
+		if sub, ok := a.(Msg); ok {
+			m.Args = append(m.Args, sub)
+			continue
+		}
 		m.Args = append(m.Args, fmt.Sprint(a))
 	}
 	return m
+}
+
+// TextMsg is a sentence of the static score as the page shows it. A literal
+// that could read as an "@" or "#" argument stays a raw Msg.
+func TextMsg(t readiness.Text) Msg {
+	if t.Key == "" {
+		return Raw(t.Lit)
+	}
+	m := Msg{Key: t.Key}
+	for _, a := range t.Args {
+		if a.Key == "" && !strings.HasPrefix(a.Lit, "@") && !strings.HasPrefix(a.Lit, "#") {
+			m.Args = append(m.Args, a.Lit)
+			continue
+		}
+		m.Args = append(m.Args, TextMsg(a))
+	}
+	return m
+}
+
+func textMsgs(ts []readiness.Text) []Msg {
+	out := make([]Msg, len(ts))
+	for i, t := range ts {
+		out[i] = TextMsg(t)
+	}
+	return out
+}
+
+// joinMsgs chains ms with the two-place sentence key ("{0}；{1}").
+func joinMsgs(key string, ms []Msg) Msg {
+	switch len(ms) {
+	case 0:
+		return Msg{}
+	case 1:
+		return ms[0]
+	}
+	return M(key, ms[0], joinMsgs(key, ms[1:]))
 }
 
 // Raw is a literal that is not translated.
@@ -66,9 +113,18 @@ func (m Msg) Zh() string { return m.Text("zh") }
 // En is the sentence in English.
 func (m Msg) En() string { return m.Text("en") }
 
-func fill(lang, tpl string, args []string) string {
+func fill(lang, tpl string, args []any) string {
 	for i, a := range args {
-		tpl = strings.ReplaceAll(tpl, fmt.Sprintf("{%d}", i), resolveArg(lang, a))
+		var s string
+		switch a := a.(type) {
+		case Msg:
+			s = a.Text(lang)
+		case string:
+			s = resolveArg(lang, a)
+		default:
+			s = fmt.Sprint(a)
+		}
+		tpl = strings.ReplaceAll(tpl, fmt.Sprintf("{%d}", i), s)
 	}
 	return tpl
 }

@@ -546,12 +546,12 @@ main.langin { animation: langin .16s var(--ease); }
 <thead><tr><th>{{m "static.item"}}</th>{{range .Levels}}<th>{{.Name}}</th>{{end}}</tr></thead>
 <tbody>
 {{range .Checks}}
-<tr><td>{{mm .Label}}（{{pts .Max}}）</td>{{range .Cells}}<td><span class="num">{{pts .Points}}</span><br><span class="muted">{{.Detail}}</span></td>{{end}}</tr>
+<tr><td>{{mm .Label}}（{{pts .Max}}）</td>{{range .Cells}}<td><span class="num">{{pts .Points}}</span><br><span class="muted">{{rd .Detail}}</span></td>{{end}}</tr>
 {{end}}
 </tbody>
 </table>
 </div>
-{{range .Levels}}{{range .Static.Notes}}<p class="muted">{{m "static.note"}} {{.}}</p>{{end}}{{end}}
+{{range .Levels}}{{range .Static.Notes}}<p class="muted">{{m "static.note"}} {{rd .}}</p>{{end}}{{end}}
 
 </div></div></div></div>
 <div class="fold" id="l4"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-l4"><span>{{m "fold.l4"}}</span><span class="chev"></span></button><div class="acc-b" id="b-l4"><div class="acc-in"><div class="fold-body">
@@ -564,7 +564,7 @@ main.langin { animation: langin .16s var(--ease); }
 {{range .}}{{template "l4item" .}}{{end}}
 {{end}}
 <h3>{{m "l4.standards"}}</h3>
-<ul>{{range .Standards}}<li>{{.Name}} <code>{{.Path}}</code>：{{.Status}}，{{.Detail}}</li>{{end}}</ul>
+<ul>{{range .Standards}}<li>{{m "l4.standard" (rdm .Name) .Path .Status (rdm .Detail)}}</li>{{end}}</ul>
 {{else}}
 <p class="none">{{m "l4.none"}}</p>
 {{end}}
@@ -583,10 +583,11 @@ main.langin { animation: langin .16s var(--ease); }
   <div class="db">
     {{if .Story.Dash.HasAfter}}<div class="path"><h3>{{m "dlg.path1"}}</h3><button type="button" class="btn small" data-goto="after">{{m "dlg.goto"}}</button></div>{{end}}
     <div class="path" style="border-bottom:0"><h3>{{if .Story.Dash.HasAfter}}{{m "dlg.path2"}}{{else}}{{m "dlg.path2solo"}}{{end}}</h3></div>
-    {{range .Story.Dash.Improve.Items}}<div class="iitem"><b>Goal</b><pre>{{.Goal}}{{if .Counted}} {{m "dlg.gain" (pts .Gain)}}{{end}}</pre><b>Issue</b><pre>{{.Issue}}</pre><b>Fix</b><pre>{{.Fix}}</pre></div>{{else}}<p class="muted">{{m "dlg.none"}}</p>{{end}}
+    {{range .Story.Dash.Improve.Items}}<div class="iitem"><b>Goal</b><pre>{{mm .Goal}}{{if .Counted}} {{m "dlg.gain" (pts .Gain)}}{{end}}</pre><b>Issue</b><pre>{{mm .Issue}}</pre><b>Fix</b><pre>{{mm .Fix}}</pre></div>{{else}}<p class="muted">{{m "dlg.none"}}</p>{{end}}
   </div>
   <div class="df"><button type="button" class="btn" data-copy-from="improve-text">{{m "copy.all"}}</button><span class="muted">{{m "dlg.count" (len .Story.Dash.Improve.Items)}}</span></div>
-  <textarea id="improve-text" readonly hidden>{{.Story.Dash.Improve.Text}}</textarea>
+  <textarea id="improve-text" readonly hidden>{{.Story.Dash.Improve.Text.Zh}}</textarea>
+  <textarea id="improve-text-en" readonly hidden>{{.Story.Dash.Improve.Text.En}}</textarea>
 </dialog>
 </main>
 <script type="application/json" id="i18n">{{dictJSON}}</script>
@@ -603,11 +604,12 @@ main.langin { animation: langin .16s var(--ease); }
   var DICT = JSON.parse($("#i18n").textContent), LV = JSON.parse($("#levels-data").textContent), LANG_KEY = "lodog-report-lang";
   var lang = "zh";
   function resolve(a) {
+    if (typeof a === "object") return T(a);
     if (a.charAt(0) === "@") { var t = DICT[lang][a.slice(1)]; if (t !== undefined) return t; }
     if (a.charAt(0) === "#") { return a.slice(1).split(",").map(resolve).join(DICT[lang].sep); }
     return a;
   }
-  // msg: {k, a, r}; a missing key shows the key itself, like the server does
+  // msg: {k, a, r}, an argument a string or a msg; a missing key shows the key itself, like the server does
   function T(msg) {
     if (!msg) return "";
     if (!msg.k) return msg.r || "";
@@ -762,7 +764,8 @@ main.langin { animation: langin .16s var(--ease); }
     if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
   }
   $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(lang === "en" && b.dataset.copyEn ? b.dataset.copyEn : b.dataset.copy, b); }); });
-  $$("[data-copy-from]").forEach(function (b) { b.addEventListener("click", function () { copyText(document.getElementById(b.dataset.copyFrom).value, b); }); });
+  // the English text sits beside it, in the element whose id ends in -en
+  $$("[data-copy-from]").forEach(function (b) { b.addEventListener("click", function () { var en = lang === "en" && document.getElementById(b.dataset.copyFrom + "-en"); copyText((en || document.getElementById(b.dataset.copyFrom)).value, b); }); });
   $$("[data-lang]").forEach(function (b) { b.addEventListener("click", function () { setLang(b.dataset.lang, true); }); });
 
   // ---- the replay ----
@@ -806,11 +809,11 @@ main.langin { animation: langin .16s var(--ease); }
 
 {{define "l4item"}}
 <details>
-<summary>{{if .Counted}}+{{pts .Gain}} {{m "l4.pts"}}{{else}}·{{end}}　{{.Name}}（{{.Measured}}）</summary>
-<p>{{.Detail}}</p>
-{{if .Examples}}<ul>{{range .Examples}}<li>{{.}}</li>{{end}}</ul>{{end}}
+<summary>{{if .Counted}}+{{pts .Gain}} {{m "l4.pts"}}{{else}}·{{end}}　{{m "l4.item" (rdm .Name) (rdm .Measured)}}</summary>
+<p>{{rd .Detail}}</p>
+{{if .Examples}}<ul>{{range .Examples}}<li>{{rd .}}</li>{{end}}</ul>{{end}}
 <p class="muted">{{m "l4.paste"}}</p>
-<pre>{{.Instruction}}</pre>
+<pre>{{rd .Instruction}}</pre>
 </details>
 {{end}}
 
@@ -864,7 +867,7 @@ main.langin { animation: langin .16s var(--ease); }
 {{range $c.Checks}}{{template "check" dict "C" . "P" $.Prefix "L" $v.Key}}{{end}}
 {{end}}
 {{end}}
-{{define "rings"}}<div class="rings">{{range .}}<div class="ring {{if .Measured}}t-{{.Tone}}{{else}}none{{end}}" title="{{.Frac.Zh}}"><div class="rwrap"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/>{{if .Measured}}<circle class="rprog" cx="40" cy="40" r="34" pathLength="100" stroke-dasharray="{{pts .Pct}} 100"/>{{end}}</svg><b>{{mm .Center}}</b></div><h3>{{mm .Label}}</h3></div>{{end}}</div>{{end}}
+{{define "rings"}}<div class="rings">{{range .}}<div class="ring {{if .Measured}}t-{{.Tone}}{{else}}none{{end}}" {{mam "title" .Frac}}><div class="rwrap"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/>{{if .Measured}}<circle class="rprog" cx="40" cy="40" r="34" pathLength="100" stroke-dasharray="{{pts .Pct}} 100"/>{{end}}</svg><b>{{mm .Center}}</b></div><h3>{{mm .Label}}</h3></div>{{end}}</div>{{end}}
 {{define "check"}}{{$c := .C}}{{$id := print .P "-" .L "-" $c.ID}}
 <div class="chk{{if $c.Changed}} new{{end}}"><button type="button" class="acc-h" aria-expanded="false" aria-controls="c-{{$id}}"><span class="ico {{if not $c.Measured}}na{{else if $c.Pass}}ok{{else}}no{{end}}" aria-hidden="true">{{if not $c.Measured}}–{{else if $c.Pass}}✓{{else}}✕{{end}}</span><span class="ttl">{{mm $c.Short}}</span><span class="sr">{{if not $c.Measured}}{{m "check.sr.na"}}{{else if $c.Pass}}{{m "check.sr.pass"}}{{else}}{{m "check.sr.fail"}}{{end}}</span>{{if $c.Changed}}<span class="tag">{{m "check.new"}}</span>{{end}}<span class="chev"></span></button>
 <div class="acc-b" id="c-{{$id}}"><div class="acc-in"><div class="cb">
@@ -873,9 +876,9 @@ main.langin { animation: langin .16s var(--ease); }
   {{if $c.Issues}}<h4>Issue</h4><p class="issue">{{range $c.Issues}}{{mm .}} {{end}}</p>{{end}}
   {{if not $c.How.Text.IsZero}}<h4>How to implement</h4><p class="how {{$c.How.Kind}}">{{mm $c.How.Text}}</p>{{end}}
   <h4>Resources</h4><p><code>{{$c.Resource}}</code></p>
-  {{if or $c.Calls $c.Answer}}<div class="audit"><button type="button" class="acc-h" aria-expanded="false" aria-controls="a-{{$id}}"><span>Audit details</span><span class="chev"></span></button><div class="acc-b" id="a-{{$id}}"><div class="acc-in"><div>
+  {{if or $c.Calls (not $c.Answer.IsZero)}}<div class="audit"><button type="button" class="acc-h" aria-expanded="false" aria-controls="a-{{$id}}"><span>Audit details</span><span class="chev"></span></button><div class="acc-b" id="a-{{$id}}"><div class="acc-in"><div>
     {{if $c.Calls}}<ol class="calls" style="--n: 0">{{range $c.Calls}}<li class="{{if .Danger}}danger{{else if .Write}}write{{end}}"><span class="m">{{.Method}}</span><span class="p">{{.Path}}{{if gt .Count 1}} <span class="muted">×{{.Count}}</span>{{end}}</span><span class="st">{{.Status}}</span>{{if .Danger}}<span class="why">{{m "call.danger"}}</span>{{else if .ApprovalID}}<span class="why">{{m "call.approved" .ApprovalID}}</span>{{end}}</li>{{end}}</ol>{{end}}
-    {{if $c.Answer}}<p class="muted" style="margin-top:8px">{{$c.Answer}}</p>{{end}}
+    {{if not $c.Answer.IsZero}}<p class="muted" style="margin-top:8px">{{mm $c.Answer}}</p>{{end}}
   </div></div></div></div>{{end}}
   {{if not $c.Pass}}<div class="actions"><button type="button" class="btn ghost" data-copy="{{index $c.Prompt "zh"}}" data-copy-en="{{index $c.Prompt "en"}}">Copy prompt</button></div>{{end}}
   {{end}}

@@ -41,23 +41,26 @@ type L4 struct {
 // L4Item is one change to the legacy system.
 type L4Item struct {
 	ID   string `json:"id"`
-	Name string `json:"name"`
+	Name Text   `json:"name"`
 	// Check is the static check this item earns points in; empty when the
 	// item is not in the static score.
 	Check string `json:"check,omitempty"`
 	// Measured says where the item shows up in the score.
-	Measured string `json:"measured"`
+	Measured Text `json:"measured"`
 	// Gain is the static points the change adds: the check's maximum minus
 	// what it scores now. 0 for an item outside the static score.
 	Gain float64 `json:"gain"`
 	// Handled is true for an item in the static score whose check is already
 	// full (an overlay, a policy or the gateway took care of it): it earns
 	// nothing more, but the legacy code should still change.
-	Handled  bool     `json:"handled,omitempty"`
-	Detail   string   `json:"detail"`
-	Examples []string `json:"examples,omitempty"`
+	Handled  bool   `json:"handled,omitempty"`
+	Detail   Text   `json:"detail"`
+	Examples []Text `json:"examples,omitempty"`
 	// Instruction is written to be pasted to a coding agent as it stands.
-	Instruction string `json:"instruction"`
+	Instruction Text `json:"instruction"`
+	// Lead is the instruction's first sentence, the one-line hint of what to
+	// change.
+	Lead Text `json:"-"`
 	// Endpoints are the endpoints the item asks the legacy API to add.
 	Endpoints []MissingEndpoint `json:"endpoints,omitempty"`
 }
@@ -91,17 +94,17 @@ func (l *L4) items(counted bool) []L4Item {
 // Standard is a public agent standard a native system publishes.
 type Standard struct {
 	ID     string `json:"id"`
-	Name   string `json:"name"`
+	Name   Text   `json:"name"`
 	Path   string `json:"path"`
 	Status string `json:"status"`
-	Detail string `json:"detail"`
+	Detail Text   `json:"detail"`
 }
 
 // standards are the well-known documents of docs/reference-isitagentready.md.
 var standards = []Standard{
-	{ID: "mcp_server_card", Name: "MCP Server Card", Path: "/.well-known/mcp/server-card.json"},
-	{ID: "oauth_protected_resource", Name: "OAuth Protected Resource（RFC 9728）", Path: "/.well-known/oauth-protected-resource"},
-	{ID: "api_catalog", Name: "API Catalog（RFC 9727）", Path: "/.well-known/api-catalog"},
+	{ID: "mcp_server_card", Name: Lit("MCP Server Card"), Path: "/.well-known/mcp/server-card.json"},
+	{ID: "oauth_protected_resource", Name: say("rd.std.oauth_protected_resource"), Path: "/.well-known/oauth-protected-resource"},
+	{ID: "api_catalog", Name: say("rd.std.api_catalog"), Path: "/.well-known/api-catalog"},
 }
 
 // recommendL4 lists the code changes for what v gives the agent. The gain of a
@@ -116,10 +119,10 @@ func recommendL4(v View, tools []spec.Operation, r Report) *L4 {
 	scored := func(it L4Item) {
 		c := byID[it.Check]
 		it.Gain = round2(c.Max - c.Points)
-		it.Measured = "靜態：" + c.Name
+		it.Measured = say("rd.l4.static", c.Name)
 		if it.Gain == 0 {
 			it.Handled = true
-			it.Measured += "，已拿滿，不再加分"
+			it.Measured = say("rd.l4.static.full", c.Name)
 		}
 		l4.Gain += it.Gain
 		l4.Items = append(l4.Items, it)
@@ -139,7 +142,7 @@ func recommendL4(v View, tools []spec.Operation, r Report) *L4 {
 	}
 	for _, it := range []func(View, []spec.Operation) (L4Item, bool){dryRunItem, idempotencyItem} {
 		if item, ok := it(v, tools); ok {
-			item.Measured = "動態：安全分與 gate"
+			item.Measured = say("rd.l4.dynamic")
 			l4.Items = append(l4.Items, item)
 		}
 	}
@@ -155,7 +158,7 @@ func uncheckedStandards() []Standard {
 	copy(out, standards)
 	for i := range out {
 		out[i].Status = StandardUnchecked
-		out[i].Detail = "沒有給 --origin，未檢查"
+		out[i].Detail = say("rd.std.unchecked")
 	}
 	return out
 }
@@ -164,40 +167,38 @@ func uncheckedStandards() []Standard {
 // or not: a GET that policy hides still has to change in the legacy code.
 func sideEffectGETItem(v View) (L4Item, bool) {
 	served, _ := serving.RawTools(v.Doc)
-	var found []string
+	var found []Text
 	var byName, byDeclaration int
 	for _, t := range served {
 		op := t.Op
 		if op.Method != "GET" || !v.Signals.ScoreMutating(op) {
 			continue
 		}
-		word, ok := v.Signals.ScoreSideEffectGET(op)
-		if ok {
+		var word Text
+		if w, ok := v.Signals.ScoreSideEffectGET(op); ok {
 			byName++
+			word = Lit(w)
 		} else {
 			byDeclaration++
-			word = "宣告 " + op.AgentRisk
+			word = say("rd.l4.side_effect_gets.declared", op.AgentRisk)
 		}
-		found = append(found, name(op)+"（"+word+"）")
+		found = append(found, say("rd.marked", name(op), word))
 	}
 	if len(found) == 0 {
 		return L4Item{}, false
 	}
-	var sources []string
+	var sources []Text
 	if byName > 0 {
-		sources = append(sources, fmt.Sprintf("%d 個 GET 的名字是動作", byName))
+		sources = append(sources, say("rd.l4.side_effect_gets.byname", byName))
 	}
 	if byDeclaration > 0 {
-		sources = append(sources, fmt.Sprintf("%d 個 GET 被 overlay 宣告成會改資料", byDeclaration))
+		sources = append(sources, say("rd.l4.side_effect_gets.byrisk", byDeclaration))
 	}
-	return L4Item{
-		ID: "side_effect_gets", Name: "把會改資料的 GET 改成 POST", Check: "side_effect_gets",
-		Detail:   strings.Join(sources, "、") + "；L3 policy 只能擋住它們，改掉才是根本",
+	return withFix(L4Item{
+		ID: "side_effect_gets", Name: say("rd.l4.side_effect_gets.name"), Check: "side_effect_gets",
+		Detail:   say("rd.l4.side_effect_gets.detail", joined("rd.join", sources)),
 		Examples: examples(found),
-		Instruction: "下列 GET 端點會改資料，但 GET 應該是安全的查詢（爬蟲、預取、agent 都會當它無害）。" +
-			"請把每一個改成 POST（刪除類改 DELETE），路徑和權限檢查維持不變，並同步更新 OpenAPI 文件和所有呼叫端；" +
-			"舊的 GET 路徑回 405，不要繼續執行動作。\n" + bullets(found),
-	}, true
+	}, say("rd.l4.side_effect_gets.lead"), "rd.l4.side_effect_gets.fix", bullets(found)), true
 }
 
 func errorItem(tools []spec.Operation) (L4Item, bool) {
@@ -210,14 +211,12 @@ func errorItem(tools []spec.Operation) (L4Item, bool) {
 	if len(missing) == 0 {
 		return L4Item{}, false
 	}
-	return L4Item{
-		ID: "error_responses", Name: "錯誤回應結構化並寫進文件", Check: "error_responses",
-		Detail:   fmt.Sprintf("%d/%d 個 tool 沒有寫 4xx/5xx 回應；agent 看不懂錯誤就沒辦法自己修正", len(missing), len(tools)),
-		Examples: examples(missing),
-		Instruction: "請讓所有錯誤回應用同一個結構 application/problem+json（RFC 9457）：type、title、status、detail，" +
-			"另加 errors 陣列指出哪個欄位錯在哪、該怎麼改。然後在 OpenAPI 為每支 API 寫出 400、401、403、404、409、500 中實際會出現的回應，" +
-			"schema 指向共用的 Problem。先從下列沒寫任何錯誤回應的端點開始：\n" + bullets(examples(missing)),
-	}, true
+	listed := examples(lits(missing))
+	return withFix(L4Item{
+		ID: "error_responses", Name: say("rd.l4.error_responses.name"), Check: "error_responses",
+		Detail:   say("rd.l4.error_responses.detail", len(missing), len(tools)),
+		Examples: listed,
+	}, say("rd.l4.error_responses.lead"), "rd.l4.error_responses.fix", bullets(listed)), true
 }
 
 func authItem(v View, tools []spec.Operation) (L4Item, bool) {
@@ -230,24 +229,18 @@ func authItem(v View, tools []spec.Operation) (L4Item, bool) {
 	if len(v.Doc.SecuritySchemes) > 0 && len(open) == 0 {
 		return L4Item{}, false
 	}
-	return L4Item{
-		ID: "auth_declared", Name: "宣告驗證方式", Check: "auth_declared",
-		Detail:   fmt.Sprintf("securitySchemes：%s；%d/%d 個 tool 沒標 security", list(v.Doc.SecuritySchemes), len(open), len(tools)),
-		Examples: examples(open),
-		Instruction: "請在 OpenAPI 的 components.securitySchemes 寫出系統實際使用的驗證方式（例如 bearer token、或登入後的 session cookie 用 apiKey in cookie），" +
-			"並在頂層 security 或每支 operation 標上要用哪一個；不需驗證的端點（如登入）明確寫 security: []。" +
-			"讓 agent 光看文件就知道先登入再帶什麼。",
-	}, true
+	return withFix(L4Item{
+		ID: "auth_declared", Name: say("rd.l4.auth_declared.name"), Check: "auth_declared",
+		Detail:   say("rd.l4.auth_declared.detail", list(v.Doc.SecuritySchemes), len(open), len(tools)),
+		Examples: examples(lits(open)),
+	}, say("rd.l4.auth_declared.lead"), "rd.l4.auth_declared.fix"), true
 }
 
 func identityItem() L4Item {
-	return L4Item{
-		ID: "agent_identity", Name: "給 agent 真正的機器身份", Check: "agent_identity",
-		Detail: "gateway 的身份只是紀錄上的標籤，舊系統看不到；分數已經由 gateway 拿到的話，這項不再加分",
-		Instruction: "請讓系統支援機器身份：agent 用自己的 service account（OAuth client credentials）取得 token，不共用任何人的帳號。" +
-			"token 帶 sub（agent）與 act（代表的人，RFC 8693）；權限依這組身份判斷，可以單獨停用某個 agent；" +
-			"稽核紀錄同時寫下 agent 與代表的人。",
-	}
+	return withFix(L4Item{
+		ID: "agent_identity", Name: say("rd.l4.agent_identity.name"), Check: "agent_identity",
+		Detail: say("rd.l4.agent_identity.detail"),
+	}, say("rd.l4.agent_identity.lead"), "rd.l4.agent_identity.fix")
 }
 
 func pagingItem(tools []spec.Operation) (L4Item, bool) {
@@ -290,18 +283,15 @@ func pagingItem(tools []spec.Operation) (L4Item, bool) {
 		}
 	}
 	sort.Strings(odd)
-	listed := union(odd, unbounded)
 	if most == lists && bounded == lists {
 		return L4Item{}, false
 	}
-	return L4Item{
-		ID: "paging", Name: "分頁參數一致並設上限", Check: "paging",
-		Detail:   fmt.Sprintf("%d 個列表：%d 個不是最常見的分頁參數 %s；%d 個沒寫 page size 上限", lists, len(odd), common, len(unbounded)),
-		Examples: examples(listed),
-		Instruction: fmt.Sprintf("請讓所有列表 API 用同一組分頁參數 %s，不一致的列表改成它（舊參數可暫時保留相容）。"+
-			"每個列表的 page size 在 OpenAPI 用 maximum 寫出上限，伺服器端也要強制，超過就回 400。需要統一或補上限的端點：\n%s",
-			common, bullets(examples(listed))),
-	}, true
+	listed := examples(lits(union(odd, unbounded)))
+	return withFix(L4Item{
+		ID: "paging", Name: say("rd.l4.paging.name"), Check: "paging",
+		Detail:   say("rd.l4.paging.detail", lists, len(odd), common, len(unbounded)),
+		Examples: listed,
+	}, say("rd.l4.paging.lead", common), "rd.l4.paging.fix", bullets(listed)), true
 }
 
 func dryRunItem(v View, tools []spec.Operation) (L4Item, bool) {
@@ -314,13 +304,12 @@ func dryRunItem(v View, tools []spec.Operation) (L4Item, bool) {
 	if len(missing) == 0 {
 		return L4Item{}, false
 	}
-	return L4Item{
-		ID: "dry_run", Name: "危險操作支援 dry-run",
-		Detail:   fmt.Sprintf("%d 個會改資料的 tool 沒有 dry-run 參數；agent 無法在送出前預覽結果", len(missing)),
-		Examples: examples(missing),
-		Instruction: "請為會改資料的端點（優先是金額、狀態會變的）加上 dryRun=true 參數：照常驗證並計算結果、回傳「會改什麼」，" +
-			"但不寫入資料庫、不發通知、不打外部系統；在 OpenAPI 寫出這個參數與預覽回應。優先處理：\n" + bullets(examples(missing)),
-	}, true
+	listed := examples(lits(missing))
+	return withFix(L4Item{
+		ID: "dry_run", Name: say("rd.l4.dry_run.name"),
+		Detail:   say("rd.l4.dry_run.detail", len(missing)),
+		Examples: listed,
+	}, say("rd.l4.dry_run.lead"), "rd.l4.dry_run.fix", bullets(listed)), true
 }
 
 func idempotencyItem(v View, tools []spec.Operation) (L4Item, bool) {
@@ -333,14 +322,12 @@ func idempotencyItem(v View, tools []spec.Operation) (L4Item, bool) {
 	if len(missing) == 0 {
 		return L4Item{}, false
 	}
-	return L4Item{
-		ID: "idempotency_key", Name: "寫入操作支援 idempotency key",
-		Detail:   fmt.Sprintf("%d 個會改資料的 tool 沒看到 idempotency key（文件裡的 query、header 參數或 body 欄位）；逾時重試可能重複執行", len(missing)),
-		Examples: examples(missing),
-		Instruction: "請讓會改資料的端點接受 Idempotency-Key（header 或 body 欄位 idempotencyKey）：" +
-			"同一個 key 在保存期限內重送，回傳第一次的結果、不重複執行；同 key 不同內容回 409。" +
-			"保存期限至少 24 小時，並寫進 OpenAPI。優先處理金額類端點：\n" + bullets(examples(missing)),
-	}, true
+	listed := examples(lits(missing))
+	return withFix(L4Item{
+		ID: "idempotency_key", Name: say("rd.l4.idempotency_key.name"),
+		Detail:   say("rd.l4.idempotency_key.detail", len(missing)),
+		Examples: listed,
+	}, say("rd.l4.idempotency_key.lead"), "rd.l4.idempotency_key.fix", bullets(listed)), true
 }
 
 // hasInput reports whether op takes a query, header or cookie parameter, or a top-level body
@@ -373,15 +360,26 @@ func union(a, b []string) []string {
 	return out
 }
 
-func bullets(xs []string) string {
-	var b strings.Builder
-	for _, x := range xs {
-		if strings.HasPrefix(x, "…") {
-			x += "，一併處理"
+// withFix sets the item's instruction: the template fix, whose {0} is the
+// lead and whose other places are args.
+func withFix(it L4Item, lead Text, fix string, args ...any) L4Item {
+	it.Lead = lead
+	it.Instruction = say(fix, append([]any{lead}, args...)...)
+	return it
+}
+
+// bullets is one line per x; the line that says how many more there are asks
+// for those too.
+func bullets(xs []Text) Text {
+	lines := make([]Text, len(xs))
+	for i, x := range xs {
+		key := "rd.bullet"
+		if x.Key == "rd.more" {
+			key = "rd.bullet.more"
 		}
-		b.WriteString("- " + x + "\n")
+		lines[i] = say(key, x)
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return joined("rd.lines", lines)
 }
 
 // CheckStandards looks for each public agent standard under origin and
@@ -401,24 +399,24 @@ func CheckStandards(ctx context.Context, client *http.Client, origin string, r *
 	return nil
 }
 
-func probe(ctx context.Context, client *http.Client, target string) (string, string) {
+func probe(ctx context.Context, client *http.Client, target string) (string, Text) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return StandardMissing, err.Error()
+		return StandardMissing, Lit(err.Error())
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return StandardMissing, "連不上：" + err.Error()
+		return StandardMissing, say("rd.std.unreachable", err.Error())
 	}
 	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 	// A catch-all page answers 200 for any path; only JSON counts as the document.
 	if resp.StatusCode == http.StatusOK && strings.Contains(resp.Header.Get("Content-Type"), "json") {
-		return StandardFound, target
+		return StandardFound, Lit(target)
 	}
-	return StandardMissing, fmt.Sprintf("%s 回 %d", target, resp.StatusCode)
+	return StandardMissing, say("rd.std.status", target, resp.StatusCode)
 }
 
 func renderL4(b *strings.Builder, l4 *L4) {
@@ -450,7 +448,7 @@ func renderItem(b *strings.Builder, mark string, it L4Item) {
 	for _, e := range it.Examples {
 		fmt.Fprintf(b, "      - %s\n", e)
 	}
-	fmt.Fprintf(b, "    貼給 coding agent：\n%s\n", indent(it.Instruction, "      "))
+	fmt.Fprintf(b, "    貼給 coding agent：\n%s\n", indent(it.Instruction.String(), "      "))
 }
 
 func indent(s, prefix string) string {

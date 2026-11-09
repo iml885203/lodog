@@ -1,8 +1,11 @@
 package report
 
+import "github.com/iml885203/lodog/internal/readiness"
+
 // zh is the page in Traditional Chinese: the language the HTML is written in.
-// {0}, {1} … are the arguments of a Msg; `x` is set as code.
-var zh = map[string]string{
+// {0}, {1} … are the arguments of a Msg; `x` is set as code. The sentences of
+// the static score are readiness.Texts, added as they are.
+var zh = withTexts(map[string]string{
 	"sep":   "、",
 	"title": "lodog 測試報告",
 
@@ -70,19 +73,11 @@ var zh = map[string]string{
 	"cat.safety":      "安全把關",
 	"cat.performance": "實際表現",
 
-	"check.descriptions":     "說明覆蓋",
-	"check.tool_count":       "Tool 數量",
-	"check.risk_declared":    "風險標記",
-	"check.side_effect_gets": "GET 卻會改資料",
-	"check.auth_declared":    "Auth 宣告",
-	"check.agent_identity":   "Agent 身份",
-	"check.error_responses":  "錯誤回應",
-	"check.paging":           "分頁一致",
-	"check.sr.na":            "未量測",
-	"check.sr.pass":          "通過",
-	"check.sr.fail":          "沒通過",
-	"check.new":              "新通過",
-	"check.notrun":           "這一題還沒有跑。",
+	"check.sr.na":   "未量測",
+	"check.sr.pass": "通過",
+	"check.sr.fail": "沒通過",
+	"check.new":     "新通過",
+	"check.notrun":  "這一題還沒有跑。",
 
 	"goal.static":        "{0}拿滿分（{1} 分）",
 	"issue.static":       "{0}/{1} 分。{2}",
@@ -246,6 +241,8 @@ var zh = map[string]string{
 	"l4.none":          "沒有 L4 清單。",
 	"l4.pts":           "分",
 	"l4.paste":         "貼給 coding agent：",
+	"l4.standard":      "{0} `{1}`：{2}，{3}",
+	"l4.item":          "{0}（{1}）",
 
 	"nm.legacy":      "{0}（run {1}）：run 記的設定檔是 {2}，現在這一級的設定檔是 {3}；依 meta 的 level 欄位配對，不是依檔名",
 	"climb.legacy":   "舊設定檔名",
@@ -272,6 +269,18 @@ var zh = map[string]string{
 	"dlg.gain":      "（靜態分 +{0}）",
 	"dlg.none":      "沒有要改原系統 code 的項目。",
 	"dlg.count":     "{0} 項",
+	"dlg.issue":     "{0}。{1}",
+	"dlg.item":      "Goal: {0}\n\nIssue: {1}\n\nFix: {2}",
+	"text.items":    "{0}\n\n---\n\n{1}",
+	"text.examples": "{0}；{1}",
 	"copy.all":      "Copy all instructions",
 	"copy.done":     "✓ 已複製",
+})
+
+// withTexts adds readiness.Texts to the dictionary d.
+func withTexts(d map[string]string) map[string]string {
+	for k, v := range readiness.Texts {
+		d[k] = v
+	}
+	return d
 }

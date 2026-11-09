@@ -81,9 +81,9 @@ type Check struct {
 	How      HowTo
 	Resource string
 	// Calls are the calls of the task's first attempt, Answer the start of the
-	// agent's answer: the audit details.
+	// agent's answer (for a static check, its examples): the audit details.
 	Calls  []ReplayCall
-	Answer string
+	Answer Msg
 	// Prompt is the text to paste to a coding agent, in each language.
 	Prompt map[string]string
 }
@@ -121,7 +121,7 @@ type Improve struct {
 	// Items are the changes to the legacy system, in paste-ready form.
 	Items []ImproveItem
 	// Text is every item in one block to copy.
-	Text string
+	Text Msg
 	// Count is the number of items that still add static points.
 	Count int
 	Gain  float64
@@ -129,7 +129,7 @@ type Improve struct {
 
 // ImproveItem is one change in the Goal / Issue / Fix form.
 type ImproveItem struct {
-	Goal, Issue, Fix string
+	Goal, Issue, Fix Msg
 	Counted          bool
 	Gain             float64
 }
@@ -185,7 +185,7 @@ func agentPrompt(level string, commands ...string) Msg {
 // guideRows are the table's rows: the levels, then the change to the legacy code.
 func guideRows(im Improve) []LevelGuide {
 	rows := append([]LevelGuide{}, levelGuide...)
-	l4 := LevelGuide{Level: "L4", Gets: M("g.L4.gets"), Do: M("g.L4.do"), Tech: M("g.L4.tech"), Does: "系統本身支援 agent", Prompt: Raw(im.Text)}
+	l4 := LevelGuide{Level: "L4", Gets: M("g.L4.gets"), Do: M("g.L4.do"), Tech: M("g.L4.tech"), Does: "系統本身支援 agent", Prompt: im.Text}
 	if im.Gain > 0 {
 		l4.Gets = M("g.L4.gets.n", numberText(roundTo(im.Gain)))
 	}
@@ -470,31 +470,17 @@ func ringsOf(l Level) []Ring {
 	return []Ring{ring("ring.correct", p.Correctness, 40), ring("ring.honest", p.Honesty, 10), safe, ring("ring.efficient", p.Efficiency, 10), ring("ring.described", p.Static, p.StaticMax)}
 }
 
-// checkName is a static check's name in the dictionary, or the name the score
-// gave it when the dictionary has none.
-func checkName(c readiness.Check) Msg {
-	if _, ok := dicts["zh"]["check."+c.ID]; ok {
-		return M("check." + c.ID)
-	}
-	return Raw(c.Name)
-}
-
 func staticChecks(l Level) []Check {
 	var out []Check
 	for _, c := range l.Static.Checks {
 		pass := c.Points >= c.Max-0.005
-		name := checkName(c)
+		name := TextMsg(c.Name)
 		ch := Check{ID: c.ID, Short: name, Pass: pass, Measured: true, Resource: resourceStatic}
-		ch.Goal = M("goal.static", "@"+name.Key, numberText(c.Max))
-		if name.Key == "" {
-			ch.Goal = M("goal.static", name.Raw, numberText(c.Max))
-		}
+		ch.Goal = M("goal.static", name, numberText(c.Max))
 		if !pass {
-			ch.Issues = []Msg{M("issue.static", numberText(roundTo(c.Points)), numberText(c.Max), c.Detail)}
+			ch.Issues = []Msg{M("issue.static", numberText(roundTo(c.Points)), numberText(c.Max), TextMsg(c.Detail))}
 		}
-		if len(c.Examples) > 0 {
-			ch.Answer = strings.Join(c.Examples, "；")
-		}
+		ch.Answer = joinMsgs("text.examples", textMsgs(c.Examples))
 		out = append(out, ch)
 	}
 	return out
@@ -530,7 +516,9 @@ func taskChecks(r Report, l Level) []Check {
 		if c.Measured {
 			c.Pass = taskPass(t)
 			c.Issues = issuesOf(r, t, c)
-			c.Calls, c.Answer = auditOf(l, t.ID)
+			var answer string
+			c.Calls, answer = auditOf(l, t.ID)
+			c.Answer = Raw(answer)
 		}
 		out = append(out, c)
 	}
@@ -588,28 +576,14 @@ func howOf(c Check, levels []Level, passes []map[string]bool, at int, l4 map[str
 		}
 	}
 	if it, ok := l4[c.ID]; ok && c.Resource == resourceStatic {
-		return HowTo{Kind: "code", Text: M("how.code", it.Name, firstSentence(it.Instruction))}
+		return HowTo{Kind: "code", Text: M("how.code", TextMsg(it.Name), TextMsg(it.Lead))}
 	}
 	return HowTo{Kind: "none", Text: M("how.none")}
 }
 
-// firstSentence is the text up to the first full stop or line break.
-func firstSentence(s string) string {
-	s = strings.TrimSpace(s)
-	for _, sep := range []struct {
-		s    string
-		keep int
-	}{{"。", len("。")}, {".\n", 1}, {". ", 1}, {"\n", 0}} {
-		if i := strings.Index(s, sep.s); i > 0 {
-			return strings.TrimSpace(s[:i+sep.keep])
-		}
-	}
-	return s
-}
-
 // promptOf is the text to paste to a coding agent: the check's Goal and Issue,
-// the fix when the L4 list has one, and what the agent did. Goal and Issue are
-// written in the given language; the instruction and the calls are data.
+// the fix when the L4 list has one, and what the agent did, in the given
+// language; the calls are data.
 func promptOf(c Check, l4 map[string]readiness.L4Item, lang string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Goal: %s\n", c.Goal.Text(lang))
@@ -621,7 +595,7 @@ func promptOf(c Check, l4 map[string]readiness.L4Item, lang string) string {
 		fmt.Fprintf(&b, "\nIssue: %s\n", strings.Join(parts, " "))
 	}
 	if it, ok := l4[c.ID]; ok && c.Resource == resourceStatic && !c.Pass {
-		fmt.Fprintf(&b, "\nFix: %s\n", it.Instruction)
+		fmt.Fprintf(&b, "\nFix: %s\n", TextMsg(it.Instruction).Text(lang))
 	}
 	if len(c.Calls) > 0 {
 		b.WriteString("\nWhat the agent did:\n")
@@ -638,16 +612,16 @@ func buildImprove(r Report) Improve {
 		return im
 	}
 	im.Gain = r.L4.Gain
-	var texts []string
+	var texts []Msg
 	for _, it := range r.L4.Items {
-		item := ImproveItem{Goal: it.Name, Issue: strings.TrimSpace(it.Measured + "。" + it.Detail), Fix: it.Instruction, Counted: it.Counted(), Gain: it.Gain}
+		item := ImproveItem{Goal: TextMsg(it.Name), Issue: M("dlg.issue", TextMsg(it.Measured), TextMsg(it.Detail)), Fix: TextMsg(it.Instruction), Counted: it.Counted(), Gain: it.Gain}
 		im.Items = append(im.Items, item)
 		if item.Counted {
 			im.Count++
 		}
-		texts = append(texts, fmt.Sprintf("Goal: %s\n\nIssue: %s\n\nFix: %s", item.Goal, item.Issue, item.Fix))
+		texts = append(texts, M("dlg.item", item.Goal, item.Issue, item.Fix))
 	}
-	im.Text = strings.Join(texts, "\n\n---\n\n")
+	im.Text = joinMsgs("text.items", texts)
 	return im
 }
 

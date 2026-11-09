@@ -69,19 +69,11 @@ var en = map[string]string{
 	"cat.safety":      "Safety",
 	"cat.performance": "Performance",
 
-	"check.descriptions":     "Description coverage",
-	"check.tool_count":       "Tool count",
-	"check.risk_declared":    "Risk labels",
-	"check.side_effect_gets": "GETs that change data",
-	"check.auth_declared":    "Auth declared",
-	"check.agent_identity":   "Agent identity",
-	"check.error_responses":  "Error responses",
-	"check.paging":           "Consistent paging",
-	"check.sr.na":            "Not measured",
-	"check.sr.pass":          "Passed",
-	"check.sr.fail":          "Failed",
-	"check.new":              "Newly passed",
-	"check.notrun":           "This task was not run.",
+	"check.sr.na":   "Not measured",
+	"check.sr.pass": "Passed",
+	"check.sr.fail": "Failed",
+	"check.new":     "Newly passed",
+	"check.notrun":  "This task was not run.",
 
 	"goal.static":        "Full marks for {0} ({1} pts)",
 	"issue.static":       "{0}/{1} pts. {2}",
@@ -245,6 +237,8 @@ var en = map[string]string{
 	"l4.none":          "No L4 list.",
 	"l4.pts":           "pts",
 	"l4.paste":         "Paste to your coding agent:",
+	"l4.standard":      "{0} `{1}`: {2}, {3}",
+	"l4.item":          "{0} ({1})",
 
 	"nm.legacy":      "{0} (run {1}): the run names the config {2}, this level's config is now {3}; matched by the level field of the run's meta, not by file name",
 	"climb.legacy":   "Old config name",
@@ -271,6 +265,117 @@ var en = map[string]string{
 	"dlg.gain":      "(static +{0})",
 	"dlg.none":      "Nothing to change in the legacy code.",
 	"dlg.count":     "{0} items",
+	"dlg.issue":     "{0}. {1}",
+	"dlg.item":      "Goal: {0}\n\nIssue: {1}\n\nFix: {2}",
+	"text.items":    "{0}\n\n---\n\n{1}",
+	"text.examples": "{0}; {1}",
 	"copy.all":      "Copy all instructions",
 	"copy.done":     "✓ Copied",
+
+	// the sentences of the static score; their Chinese is readiness.Texts
+	"rd.join":        "{0}, {1}",
+	"rd.join.semi":   "{0}; {1}",
+	"rd.lines":       "{0}\n{1}",
+	"rd.bullet":      "- {0}",
+	"rd.bullet.more": "- {0}, handle them too",
+	"rd.more":        "…and {0} more",
+	"rd.none":        "none",
+	"rd.marked":      "{0} ({1})",
+
+	"rd.check.descriptions":     "Description coverage",
+	"rd.check.tool_count":       "Tool count",
+	"rd.check.risk_declared":    "Risk labels",
+	"rd.check.side_effect_gets": "GETs that change data",
+	"rd.check.auth_declared":    "Auth declared",
+	"rd.check.agent_identity":   "Agent identity",
+	"rd.check.error_responses":  "Error responses",
+	"rd.check.paging":           "Consistent paging",
+
+	"rd.descriptions.detail":     "{0}/{1} tools have a description, {2}/{3} parameters have one",
+	"rd.tool_count.detail":       "The agent sees {0} tools; {1} or fewer gets full marks",
+	"rd.risk_declared.detail":    "{0}/{1} tools that change data declare a risk level",
+	"rd.risk_declared.policy":    "{0}; covered only by the policy default, which does not count as declared: {1}",
+	"rd.side_effect_gets.detail": "GETs named like an action: {0}; of those, neither labelled with a risk nor blocked: {1} (any one of them scores zero)",
+	"rd.auth_declared.detail":    "securitySchemes: {0}; {1}/{2} tools mark security",
+	"rd.agent_identity.none":     "A call does not show which agent made it or whom it acts for",
+	"rd.agent_identity.given":    "The gateway gives the agent its own identity and names the person it acts for",
+	"rd.error_responses.detail":  "{0}/{1} tools document 4xx/5xx responses",
+	"rd.paging.nolists":          "No paged lists",
+	"rd.paging.detail":           "Lists: {0}; using the most common paging parameters {2}: {1}; with a documented page size limit: {3}",
+	"rd.tasks.note":              "The tools of {0} are {1} task tools (workflows), each scored by its workflow's description, its inputs and the APIs its steps call",
+
+	"rd.l4.static":      "Static: {0}",
+	"rd.l4.static.full": "Static: {0}, already full, adds no more points",
+	"rd.l4.dynamic":     "Dynamic: safety score and gate",
+
+	"rd.std.oauth_protected_resource": "OAuth Protected Resource (RFC 9728)",
+	"rd.std.api_catalog":              "API Catalog (RFC 9727)",
+	"rd.std.unchecked":                "no --origin given, not checked",
+	"rd.std.unreachable":              "unreachable: {0}",
+	"rd.std.status":                   "{0} returned {1}",
+
+	"rd.l4.side_effect_gets.name":     "Turn GETs that change data into POSTs",
+	"rd.l4.side_effect_gets.declared": "declared {0}",
+	"rd.l4.side_effect_gets.byname":   "GETs named like an action: {0}",
+	"rd.l4.side_effect_gets.byrisk":   "GETs the overlay declares as changing data: {0}",
+	"rd.l4.side_effect_gets.detail":   "{0}; an L3 policy can only block them, changing them is the real fix",
+	"rd.l4.side_effect_gets.lead":     "The GET endpoints below change data, but a GET should be a safe read (crawlers, prefetchers and agents all treat it as harmless).",
+	"rd.l4.side_effect_gets.fix": "{0} Change each one to POST (DELETE for deletions), keeping the path and the permission checks as they are, and update the OpenAPI document and every caller to match; " +
+		"the old GET path returns 405 and no longer performs the action.\n{1}",
+
+	"rd.l4.error_responses.name":   "Structure error responses and document them",
+	"rd.l4.error_responses.detail": "{0}/{1} tools document no 4xx/5xx response; an agent that cannot read an error cannot correct itself",
+	"rd.l4.error_responses.lead":   "Make every error response use one structure, application/problem+json (RFC 9457): type, title, status, detail, plus an errors array that says which field is wrong, why, and how to fix it.",
+	"rd.l4.error_responses.fix": "{0} Then, in OpenAPI, document for every API the responses among 400, 401, 403, 404, 409 and 500 that it actually returns, " +
+		"with the schema pointing to a shared Problem. Start with these endpoints, which document no error response at all:\n{1}",
+
+	"rd.l4.auth_declared.name":   "Declare how authentication works",
+	"rd.l4.auth_declared.detail": "securitySchemes: {0}; {1}/{2} tools do not mark security",
+	"rd.l4.auth_declared.lead": "In OpenAPI's components.securitySchemes, write the authentication the system actually uses (for example a bearer token, or apiKey in cookie for the session cookie set at login), " +
+		"and mark which one applies in the top-level security or on each operation; write security: [] explicitly on the endpoints that need no authentication (such as login).",
+	"rd.l4.auth_declared.fix": "{0} An agent should know from the document alone that it signs in first and what it sends after that.",
+
+	"rd.l4.agent_identity.name":   "Give the agent a real machine identity",
+	"rd.l4.agent_identity.detail": "The gateway's identity is only a label on the records, the legacy system never sees it; when the gateway already earned the points, this item adds none",
+	"rd.l4.agent_identity.lead":   "Make the system support machine identities: the agent gets a token with its own service account (OAuth client credentials) and shares no person's account.",
+	"rd.l4.agent_identity.fix": "{0} The token carries sub (the agent) and act (the person it acts for, RFC 8693); permissions are decided on that identity, a single agent can be disabled on its own, " +
+		"and the audit log records both the agent and the person it acts for.",
+
+	"rd.l4.paging.name":   "Use one set of paging parameters, with a limit",
+	"rd.l4.paging.detail": "Lists: {0}; not using the most common paging parameters {2}: {1}; with no documented page size limit: {3}",
+	"rd.l4.paging.lead":   "Make every list API use the same paging parameters, {0}, and change the lists that differ to use them (the old parameters may stay for a while for compatibility).",
+	"rd.l4.paging.fix":    "{0} Document each list's page size limit in OpenAPI with maximum, and enforce it on the server too, returning 400 when it is exceeded. Endpoints to align or give a limit:\n{1}",
+
+	"rd.l4.dry_run.name":   "Support dry-run on risky operations",
+	"rd.l4.dry_run.detail": "Tools that change data with no dry-run parameter: {0}; an agent cannot preview the result before sending",
+	"rd.l4.dry_run.lead": "Add a dryRun=true parameter to the endpoints that change data (those that change an amount or a status first): validate and compute the result as usual and return \"what would change\", " +
+		"but write nothing to the database, send no notification and call no external system; document the parameter and the preview response in OpenAPI.",
+	"rd.l4.dry_run.fix": "{0} Start with:\n{1}",
+
+	"rd.l4.idempotency_key.name":   "Support an idempotency key on writes",
+	"rd.l4.idempotency_key.detail": "Tools that change data with no idempotency key in the document (a query or header parameter, or a body field): {0}; a retry after a timeout may run twice",
+	"rd.l4.idempotency_key.lead": "Make the endpoints that change data accept an Idempotency-Key (a header, or the body field idempotencyKey): " +
+		"a request resent with the same key within the retention period returns the first result and does not run again; the same key with different content returns 409.",
+	"rd.l4.idempotency_key.fix": "{0} Keep keys for at least 24 hours, and document this in OpenAPI. Start with the endpoints that move money:\n{1}",
+
+	"rd.l4.missing.name": "Add the endpoints an agent needs and the API lacks (read back a write, fetch one record by id)",
+	"rd.l4.missing.detail": "Missing endpoints: {0}. Operations that change data with no GET to read the result back: {1}, so an agent cannot confirm a write worked; " +
+		"endpoints whose collection has only a paged list: {2}, so an agent has to page through it to find the record",
+	"rd.l4.missing.detail.runs":   "{0}; endpoints where the benchmark runs show what the agent did without them: {1}",
+	"rd.l4.missing.measured":      "Not in the static score (suggested)",
+	"rd.l4.missing.measured.runs": "Not in the static score; with the call records of benchmark runs",
+	"rd.l4.missing.lead":          "After a write, an agent must be able to read that record back with a GET to confirm the state really changed; to find a record, it must be able to fetch it by id directly instead of paging through a list.",
+	"rd.l4.missing.fix": "{0} Add the GET endpoints below: each returns the record's full current state (the fields a write changes, such as status, amount, update time and last operator), and 404 when it is not found; " +
+		"and make the matching write endpoints return the record's id in their response. The paths are suggestions inferred from the existing paths, adjust them to the system's conventions; use the same permissions as the collection's list, and document them in OpenAPI.\n{1}",
+	"rd.missing.line":   "{0}: {1}",
+	"rd.missing.write":  "{0} cannot be read back after the write",
+	"rd.missing.writes": "{0} writes cannot be read back ({1} and others)",
+	"rd.missing.list":   "finding one record means paging through the list {0}",
+	"rd.missing.tasks":  "task tools: {0}",
+	"rd.missing.runs":   "runs: {0}",
+
+	"rd.run.more":    "…and {0} more",
+	"rd.run.scanned": "{0}: after {1}, paged through the list to find the record just written",
+	"rd.run.noread":  "{0}: no read at all after {1}, so the write could not be confirmed",
+	"rd.run.repeat":  "{0}: the same task successfully called {2} {1} times",
 }

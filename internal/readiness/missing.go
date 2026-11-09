@@ -1,7 +1,6 @@
 package readiness
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -27,7 +26,7 @@ type MissingEndpoint struct {
 	// Tasks are the task tools whose steps make those writes (L2, L3).
 	Tasks []string `json:"tasks,omitempty"`
 	// Runs are what benchmark runs show the agent doing without it.
-	Runs []string `json:"runs,omitempty"`
+	Runs []Text `json:"runs,omitempty"`
 }
 
 // route is a path as the checks compare it: lower case, a trailing s
@@ -220,7 +219,7 @@ func (s *endpointSet) addWrite(path string, list *spec.Operation, w string) {
 func cloneEndpoint(e MissingEndpoint) MissingEndpoint {
 	e.Writes = append([]string(nil), e.Writes...)
 	e.Tasks = append([]string(nil), e.Tasks...)
-	e.Runs = append([]string(nil), e.Runs...)
+	e.Runs = append([]Text(nil), e.Runs...)
 	return e
 }
 
@@ -281,8 +280,8 @@ func missingItem(v View, tools []spec.Operation) (L4Item, bool) {
 // (WithRuns) shows up in the same text.
 func missingL4Item(missing []MissingEndpoint) L4Item {
 	var writes, lists, seen int
-	lines := make([]string, len(missing))
-	asks := make([]string, len(missing))
+	lines := make([]Text, len(missing))
+	asks := make([]Text, len(missing))
 	for i, e := range missing {
 		writes += len(e.Writes)
 		if e.List != "" {
@@ -294,43 +293,36 @@ func missingL4Item(missing []MissingEndpoint) L4Item {
 		lines[i] = e.line(true)
 		asks[i] = e.line(false)
 	}
-	detail := fmt.Sprintf("缺 %d 個端點：%d 個會改資料的 operation 沒有 GET 讀得回結果，agent 寫完無法自己確認做對了；"+
-		"%d 個端點的集合只有分頁列表，agent 得翻列表找那一筆", len(missing), writes, lists)
+	detail := say("rd.l4.missing.detail", len(missing), writes, lists)
+	measured := say("rd.l4.missing.measured")
 	if seen > 0 {
-		detail += fmt.Sprintf("；%d 個端點在 benchmark run 裡看得到 agent 少了它怎麼做", seen)
+		detail = say("rd.l4.missing.detail.runs", detail, seen)
+		measured = say("rd.l4.missing.measured.runs")
 	}
-	measured := "不在靜態分（建議）"
-	if seen > 0 {
-		measured = "不在靜態分；附 benchmark run 的呼叫紀錄"
-	}
-	return L4Item{
-		ID: missingID, Name: "補上 agent 需要、API 卻沒有的端點（讀回寫入結果、用 id 查一筆）",
+	return withFix(L4Item{
+		ID: missingID, Name: say("rd.l4.missing.name"),
 		Measured: measured, Detail: detail, Examples: examples(lines), Endpoints: missing,
-		Instruction: "agent 做完一個寫入後，要能用一支 GET 讀回那一筆，確認狀態真的變了；找一筆紀錄時，要能用 id 直接查，不必翻分頁列表。" +
-			"請新增下列 GET 端點：回傳那一筆的完整現況（狀態、金額、更新時間、最後操作者等寫入會改的欄位），找不到回 404；" +
-			"並讓對應的寫入端點在回應裡帶回那一筆的 id。路徑是依現有路徑推的建議，照系統慣例調整即可；權限比照同一個集合的列表，並寫進 OpenAPI。\n" +
-			bullets(examples(asks)),
-	}
+	}, say("rd.l4.missing.lead"), "rd.l4.missing.fix", bullets(examples(asks)))
 }
 
 // line is the endpoint with its evidence; runs only for a person, since a
 // coding agent needs what to build, not how the benchmark went.
-func (e MissingEndpoint) line(runs bool) string {
-	var parts []string
+func (e MissingEndpoint) line(runs bool) Text {
+	var parts []Text
 	switch n := len(e.Writes); {
 	case n == 1:
-		parts = append(parts, e.Writes[0]+" 寫完讀不回")
+		parts = append(parts, say("rd.missing.write", e.Writes[0]))
 	case n > 1:
-		parts = append(parts, fmt.Sprintf("%d 個寫入讀不回（%s 等）", n, e.Writes[0]))
+		parts = append(parts, say("rd.missing.writes", n, e.Writes[0]))
 	}
 	if e.List != "" {
-		parts = append(parts, "找一筆只能翻分頁列表 "+e.List)
+		parts = append(parts, say("rd.missing.list", e.List))
 	}
 	if len(e.Tasks) > 0 {
-		parts = append(parts, "任務 tool："+strings.Join(e.Tasks, "、"))
+		parts = append(parts, say("rd.missing.tasks", joined("rd.join", lits(e.Tasks))))
 	}
 	if runs && len(e.Runs) > 0 {
-		parts = append(parts, "run："+strings.Join(e.Runs, "；"))
+		parts = append(parts, say("rd.missing.runs", joined("rd.join.semi", e.Runs)))
 	}
-	return e.Method + " " + e.Path + "：" + strings.Join(parts, "；")
+	return say("rd.missing.line", e.Method+" "+e.Path, joined("rd.join.semi", parts))
 }

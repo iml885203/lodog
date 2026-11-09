@@ -1,6 +1,7 @@
 package readiness
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,26 +80,26 @@ func TestAnL2ConfigIsScoredOnItsTaskTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := Score(v)
-	if r.Tools != 3 || len(notes) != 1 || !strings.Contains(notes[0], "3 個任務 tool") {
+	if r.Tools != 3 || len(notes) != 1 || !strings.Contains(notes[0].String(), "3 個任務 tool") {
 		t.Fatalf("tools = %d, notes = %v", r.Tools, notes)
 	}
 	if c := check(r, "tool_count"); c.Points != c.Max {
 		t.Errorf("tool count %v of %v: three tools is well under twenty", c.Points, c.Max)
 	}
 	// reset_password's input is described; read_and_reward's is not.
-	if c := check(r, "descriptions"); !strings.Contains(c.Detail, "3/3 個 tool 有說明，2/3 個參數有說明") {
-		t.Errorf("descriptions = %s", c.Detail)
+	if c := check(r, "descriptions"); !strings.Contains(c.Detail.String(), "3/3 個 tool 有說明，2/3 個參數有說明") {
+		t.Errorf("descriptions = %s", c.Detail.String())
 	}
 	// read_and_reward declares money; reset_password names an action on GET and declares nothing.
-	if c := check(r, "risk_declared"); !strings.Contains(c.Detail, "1/2") {
-		t.Errorf("risk = %s", c.Detail)
+	if c := check(r, "risk_declared"); !strings.Contains(c.Detail.String(), "1/2") {
+		t.Errorf("risk = %s", c.Detail.String())
 	}
 	if c := check(r, "side_effect_gets"); c.Points != 0 {
 		t.Errorf("an undeclared password-resetting task at L2 scored %v", c.Points)
 	}
 	// list_players' one step documents an error; read_and_reward's read step does not.
-	if c := check(r, "error_responses"); !strings.Contains(c.Detail, "1/3") {
-		t.Errorf("errors = %s: a task documents its errors only when every step does", c.Detail)
+	if c := check(r, "error_responses"); !strings.Contains(c.Detail.String(), "1/3") {
+		t.Errorf("errors = %s: a task documents its errors only when every step does", c.Detail.String())
 	}
 	if c := check(r, "agent_identity"); c.Points != 0 {
 		t.Error("identity counted below L3")
@@ -122,7 +123,7 @@ func TestAnL3ConfigDropsTheTaskToolsItsPolicyHides(t *testing.T) {
 	}
 	// L4 is about the legacy code, so it names the operations behind the tools.
 	it, ok := item(r.L4, "error_responses")
-	if !ok || !strings.Contains(strings.Join(it.Examples, " "), "GET /players/{id}") {
+	if !ok || !strings.Contains(fmt.Sprint(it.Examples), "GET /players/{id}") {
 		t.Fatalf("L4 error item = %+v", it)
 	}
 }

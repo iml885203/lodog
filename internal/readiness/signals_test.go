@@ -135,8 +135,8 @@ func TestKeycloakAdminAPIHasNoSideEffectGETAndPagesWithFirstMax(t *testing.T) {
 		t.Error("L4 lists side-effect GETs for Keycloak, which has none")
 	}
 	c := check(r, "paging")
-	if !strings.Contains(c.Detail, "first+max") {
-		t.Errorf("paging = %q: Keycloak pages with first+max and it must be seen", c.Detail)
+	if !strings.Contains(c.Detail.String(), "first+max") {
+		t.Errorf("paging = %q: Keycloak pages with first+max and it must be seen", c.Detail.String())
 	}
 }
 

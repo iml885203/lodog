@@ -38,7 +38,7 @@ count at L3). Prints a summary; --json prints the report as JSON.`,
 				client = docfetch.InsecureClient()
 			}
 			var v readiness.View
-			var notes []string
+			var notes []readiness.Text
 			var err error
 			if configPath != "" {
 				v, notes, err = readiness.FromGateway(configPath)

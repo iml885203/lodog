@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/iml885203/lodog/internal/readiness"
 )
 
 func TestBothLanguagesHaveExactlyTheSameKeys(t *testing.T) {
@@ -114,8 +116,10 @@ func TestEveryKeyTheCodeNamesIsInTheDictionary(t *testing.T) {
 
 func TestEveryKeyOfTheDictionaryIsUsed(t *testing.T) {
 	used := usedKeys(t)
-	// keys built from a prefix and a level or check id
-	dynamic := regexp.MustCompile(`^(level|tag|change|check)\.`)
+	// keys built from a prefix and a level or check id; rd. are the sentences
+	// of readiness.Texts, which readiness keeps used and defined
+	// (TestEveryTextKeyIsDefinedAndUsed)
+	dynamic := regexp.MustCompile(`^(level|tag|change|check|rd)\.`)
 	for k := range zh {
 		if !used[k] && !dynamic.MatchString(k) && k != "sep" && k != "title" {
 			t.Errorf("dictionary key %q is never used: delete it", k)
@@ -165,5 +169,56 @@ func TestEveryKeyThePageNamesIsInBothDictionaries(t *testing.T) {
 				t.Errorf("%s: the page names key %q, the dictionary has none", scen[0], m[1])
 			}
 		}
+	}
+}
+
+// TestTheScoresSentencesReadTheSameInChineseAndHaveNoChineseInEnglish renders
+// every sentence the static score writes for the cases: the page's Chinese is
+// what lodog score prints, and its English has no Chinese left.
+func TestTheScoresSentencesReadTheSameInChineseAndHaveNoChineseInEnglish(t *testing.T) {
+	cjk := regexp.MustCompile(`[\x{4e00}-\x{9fff}（），、；：「」]`)
+	t.Chdir("../..") // a case names its files from the repository root
+	seen := 0
+	check := func(where string, x readiness.Text) {
+		m := TextMsg(x)
+		if got := m.Zh(); got != x.String() {
+			t.Errorf("%s: page %q, lodog score %q", where, got, x.String())
+		}
+		if en := m.En(); cjk.MatchString(en) {
+			t.Errorf("%s: English still has Chinese: %q", where, en)
+		}
+		seen++
+	}
+	for _, c := range []string{"backoffice", "keycloak"} {
+		for _, l := range []string{"L0", "L1", "L2", "L3"} {
+			v, notes, err := readiness.FromGateway("cases/" + c + "/gateway/" + l + ".yaml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := readiness.Score(v)
+			where := c + " " + l
+			for _, n := range notes {
+				check(where+" note", n)
+			}
+			for _, ch := range r.Checks {
+				check(where+" "+ch.ID, ch.Name)
+				check(where+" "+ch.ID, ch.Detail)
+				for _, e := range ch.Examples {
+					check(where+" "+ch.ID+" example", e)
+				}
+			}
+			for _, it := range append(r.L4.Items, readiness.WithRuns(r.L4, v, nil).Items...) {
+				for _, x := range append([]readiness.Text{it.Name, it.Measured, it.Detail, it.Instruction, it.Lead}, it.Examples...) {
+					check(where+" "+it.ID, x)
+				}
+			}
+			for _, s := range r.L4.Standards {
+				check(where+" "+s.ID, s.Name)
+				check(where+" "+s.ID, s.Detail)
+			}
+		}
+	}
+	if seen < 500 {
+		t.Errorf("only %d sentences checked: the cases no longer exercise the score", seen)
 	}
 }

@@ -57,7 +57,7 @@ func TestTheChecklistPassesAreJudgedByTheCategoryOfEachTaskType(t *testing.T) {
 	for _, c := range taskChecks(r, l) {
 		got[c.ID] = c
 	}
-	if got["A"].Pass || !strings.Contains(issueText(got["A"]), "alice") || len(got["A"].Calls) != 1 || got["A"].Answer != "no idea" {
+	if got["A"].Pass || !strings.Contains(issueText(got["A"]), "alice") || len(got["A"].Calls) != 1 || got["A"].Answer.Raw != "no idea" {
 		t.Errorf("wrong answer: %+v", got["A"])
 	}
 	if !got["N"].Pass || len(got["N"].Issues) != 0 {
@@ -81,8 +81,8 @@ func TestChecksFallIntoThreeHeadingsAndEachHeadingCountsItsPasses(t *testing.T) 
 		{ID: "G", Type: score.TypeGatedWrite, AttemptsRun: 1, Safe: false},
 	}, nil, nil)
 	l.Static.Checks = []readiness.Check{
-		{ID: "descriptions", Name: "說明覆蓋", Points: 6, Max: 6},
-		{ID: "side_effect_gets", Name: "GET 會改資料", Points: 0, Max: 3},
+		{ID: "descriptions", Name: readiness.Lit("說明覆蓋"), Points: 6, Max: 6},
+		{ID: "side_effect_gets", Name: readiness.Lit("GET 會改資料"), Points: 0, Max: 3},
 	}
 	v := buildLevelView(r, l, nil, 40, nil)
 	names := map[string]Category{}
@@ -107,14 +107,14 @@ func chainReport() Report {
 	mk := func(name string, tools int, a, b float64, descr float64) Level {
 		l := ownerLevel(name, 0, []score.TaskResult{task("A", a), task("B", b)}, nil, nil)
 		l.Static = readiness.Report{Level: name, Tools: tools, Checks: []readiness.Check{
-			{ID: "descriptions", Name: "說明覆蓋", Points: descr, Max: 6},
-			{ID: "side_effect_gets", Name: "GET 會改資料", Points: 0, Max: 3},
+			{ID: "descriptions", Name: readiness.Lit("說明覆蓋"), Points: descr, Max: 6},
+			{ID: "side_effect_gets", Name: readiness.Lit("GET 會改資料"), Points: 0, Max: 3},
 		}}
 		return l
 	}
 	return Report{Tasks: map[string]string{"A": "ask a", "B": "ask b"}, Levels: []Level{
 		mk("L0", 232, 0, 0, 0), mk("L1", 232, 1, 0, 6), mk("L2", 25, 1, 1, 6),
-	}, L4: &readiness.L4{Gain: 3, Items: []readiness.L4Item{{ID: "x", Name: "GET 改 POST", Check: "side_effect_gets", Instruction: "Make it POST. More text.", Gain: 3}}}}
+	}, L4: &readiness.L4{Gain: 3, Items: []readiness.L4Item{{ID: "x", Name: readiness.Lit("GET 改 POST"), Check: "side_effect_gets", Lead: readiness.Lit("Make it POST."), Instruction: readiness.Lit("Make it POST. More text."), Gain: 3}}}}
 }
 
 func findCheck2(t *testing.T, v LevelView, id string) Check {
@@ -167,16 +167,16 @@ func TestAFailingCheckSaysWhichLevelFixesItOrWhichCodeChangeDoes(t *testing.T) {
 
 func TestTheImproveDialogCarriesGoalIssueAndFixOfEveryL4Item(t *testing.T) {
 	r := Report{L4: &readiness.L4{Gain: 2.4, Items: []readiness.L4Item{
-		{Name: "Make GET safe", Check: "side_effect_gets", Measured: "static score", Detail: "GET /x changes data", Instruction: "Make it POST.", Gain: 2.4},
-		{Name: "Handled one", Measured: "dynamic", Detail: "d", Instruction: "Do it.", Handled: true},
+		{Name: readiness.Lit("Make GET safe"), Check: "side_effect_gets", Measured: readiness.Lit("static score"), Detail: readiness.Lit("GET /x changes data"), Instruction: readiness.Lit("Make it POST."), Gain: 2.4},
+		{Name: readiness.Lit("Handled one"), Measured: readiness.Lit("dynamic"), Detail: readiness.Lit("d"), Instruction: readiness.Lit("Do it."), Handled: true},
 	}}}
 	im := buildImprove(r)
 	if im.Count != 1 || len(im.Items) != 2 || im.Gain != 2.4 {
 		t.Fatalf("improve %+v", im)
 	}
 	for _, want := range []string{"Goal: Make GET safe", "Issue: static score。GET /x changes data", "Fix: Make it POST.", "---"} {
-		if !strings.Contains(im.Text, want) {
-			t.Errorf("copy-all text %q misses %q", im.Text, want)
+		if !strings.Contains(im.Text.Zh(), want) {
+			t.Errorf("copy-all text %q misses %q", im.Text.Zh(), want)
 		}
 	}
 	if buildImprove(Report{}).Count != 0 {
@@ -285,7 +285,7 @@ func TestTheGuideTableIsPlainWordsWithTheCommandsTuckedAway(t *testing.T) {
 	r := chainReport()
 	rows := guideRows(buildImprove(r))
 	last := rows[len(rows)-1]
-	if last.Level != "L4" || !strings.Contains(last.Gets.Zh(), "能再多拿") || !strings.Contains(last.Gets.En(), "more points") || last.Prompt.Raw == "" {
+	if last.Level != "L4" || !strings.Contains(last.Gets.Zh(), "能再多拿") || !strings.Contains(last.Gets.En(), "more points") || !strings.Contains(last.Prompt.Zh(), "Fix: Make it POST. More text.") || !strings.Contains(last.Prompt.En(), "Fix: Make it POST. More text.") {
 		t.Errorf("L4 row %+v: want the points to gain and the whole instruction list to copy", last)
 	}
 	page := render(t, build2(t, "testdata/preview/shop", "testdata/preview/scenarios/full"))

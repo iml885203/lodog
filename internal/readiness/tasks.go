@@ -1,7 +1,6 @@
 package readiness
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -101,6 +100,6 @@ func endpoints(v View, tools []spec.Operation) []spec.Operation {
 	return out
 }
 
-func taskNote(v View) string {
-	return fmt.Sprintf("%s 的 tool 是 %d 個任務 tool（workflows），每個依它的 workflow 說明、輸入和步驟呼叫的 API 評分", v.Level, len(v.Tasks))
+func taskNote(v View) Text {
+	return say("rd.tasks.note", v.Level, len(v.Tasks))
 }

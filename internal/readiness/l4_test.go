@@ -44,12 +44,12 @@ func TestEachScoredItemGainsWhatItsCheckStillLacks(t *testing.T) {
 func TestAnItemNamesTheEndpointsAndCarriesAnInstructionToPaste(t *testing.T) {
 	r := Score(View{Doc: parse(t, bare)})
 	for _, it := range r.L4.Items {
-		if strings.TrimSpace(it.Instruction) == "" || it.Measured == "" {
+		if strings.TrimSpace(it.Instruction.String()) == "" || it.Measured.String() == "" {
 			t.Errorf("%s has no instruction or no measure: %+v", it.ID, it)
 		}
 	}
 	get, ok := item(r.L4, "side_effect_gets")
-	if !ok || get.Gain != 3 || !strings.Contains(get.Instruction, "GET /customer/{id}/resetPassword") {
+	if !ok || get.Gain != 3 || !strings.Contains(get.Instruction.String(), "GET /customer/{id}/resetPassword") {
 		t.Fatalf("side-effect GET item = %+v", get)
 	}
 }
@@ -239,11 +239,11 @@ func TestAnItemThatEarnsNothingMoreIsNotPrintedAsAGain(t *testing.T) {
 
 func TestTheGETCountSaysWhereEachCameFrom(t *testing.T) {
 	byName, ok := item(Score(View{Doc: parse(t, bare)}).L4, "side_effect_gets")
-	if !ok || !strings.Contains(byName.Detail, "名字是動作") || strings.Contains(byName.Detail, "overlay") {
-		t.Fatalf("a GET caught by its name: %q", byName.Detail)
+	if !ok || !strings.Contains(byName.Detail.String(), "名字是動作") || strings.Contains(byName.Detail.String(), "overlay") {
+		t.Fatalf("a GET caught by its name: %q", byName.Detail.String())
 	}
 	declared, ok := item(Score(View{Doc: parse(t, ready), Identity: true}).L4, "side_effect_gets")
-	if !ok || !strings.Contains(declared.Detail, "被 overlay 宣告成會改資料") || strings.Contains(declared.Detail, "名字是動作") {
-		t.Fatalf("a GET declared by an overlay: %q", declared.Detail)
+	if !ok || !strings.Contains(declared.Detail.String(), "被 overlay 宣告成會改資料") || strings.Contains(declared.Detail.String(), "名字是動作") {
+		t.Fatalf("a GET declared by an overlay: %q", declared.Detail.String())
 	}
 }

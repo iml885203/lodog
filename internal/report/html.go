@@ -35,11 +35,15 @@ var page = template.Must(template.New("report").Funcs(template.FuncMap{
 	// The words of the page: m names a dictionary key with arguments, mm shows
 	// a Msg, ma sets an attribute from a key, lvl is a level's name, la a level
 	// name as an argument of another sentence, list a list of names.
-	"m":    func(key string, args ...any) template.HTML { return spanOf(M(key, args...)) },
-	"mm":   spanOf,
-	"mt":   func(key string, args ...any) template.HTML { return tspanOf(M(key, args...)) },
-	"ma":   func(name, key string, args ...any) template.HTMLAttr { return attrOf(name, M(key, args...)) },
-	"lvl":  func(level string) template.HTML { return spanOf(M("level." + level)) },
+	"m":   func(key string, args ...any) template.HTML { return spanOf(M(key, args...)) },
+	"mm":  spanOf,
+	"mt":  func(key string, args ...any) template.HTML { return tspanOf(M(key, args...)) },
+	"ma":  func(name, key string, args ...any) template.HTMLAttr { return attrOf(name, M(key, args...)) },
+	"mam": attrOf,
+	"lvl": func(level string) template.HTML { return spanOf(M("level." + level)) },
+	// rd shows a sentence of the static score
+	"rd":   func(t readiness.Text) template.HTML { return spanOf(TextMsg(t)) },
+	"rdm":  TextMsg,
 	"la":   LevelArg,
 	"list": func(items []string) string { return "#" + strings.Join(items, ",") },
 	"dictJSON": func() (template.JS, error) {
@@ -118,7 +122,7 @@ func checkRows(levels []Level) []checkRow {
 	}
 	var rows []checkRow
 	for _, c := range levels[0].Static.Checks {
-		row := checkRow{Label: checkName(c), Max: c.Max}
+		row := checkRow{Label: TextMsg(c.Name), Max: c.Max}
 		for _, l := range levels {
 			row.Cells = append(row.Cells, findCheck(l.Static.Checks, c.ID))
 		}

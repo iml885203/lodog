@@ -79,8 +79,8 @@ func TestAWriteNoGETReadsBackAsksForTheRecordGETOfItsCollection(t *testing.T) {
 	if e.Method+" "+e.Path != "GET /payment/transactions/{id}" || len(e.Writes) != 2 || e.List != "GET /payment/transactions" {
 		t.Errorf("endpoint = %+v", e)
 	}
-	if !strings.Contains(it.Instruction, "GET /payment/transactions/{id}") || strings.Contains(it.Instruction, "run：") {
-		t.Errorf("instruction must name the endpoint and carry no run evidence: %s", it.Instruction)
+	if !strings.Contains(it.Instruction.String(), "GET /payment/transactions/{id}") || strings.Contains(it.Instruction.String(), "run：") {
+		t.Errorf("instruction must name the endpoint and carry no run evidence: %s", it.Instruction.String())
 	}
 }
 

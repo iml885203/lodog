@@ -166,11 +166,14 @@ func TestL4ItemsThatAddNoStaticPointsAreListedApartAsTheCLIDoes(t *testing.T) {
 	if group < 0 {
 		t.Fatal("page has no group for items outside the static score")
 	}
-	gain := strings.Index(page, fmt.Sprintf(`+%.2f <span class="i" data-k="l4.pts">分</span>　%s`, counted.Gain, counted.Name))
+	summary := func(it *readiness.L4Item) string {
+		return string(spanOf(M("l4.item", TextMsg(it.Name), TextMsg(it.Measured))))
+	}
+	gain := strings.Index(page, fmt.Sprintf(`+%.2f <span class="i" data-k="l4.pts">分</span>　%s`, counted.Gain, summary(counted)))
 	if gain < 0 || gain > group {
 		t.Errorf("%s is not listed with its gain before the uncounted group", counted.Name)
 	}
-	if strings.LastIndex(page, "·　"+handled.Name) < group {
+	if strings.LastIndex(page, "·　"+summary(handled)) < group {
 		t.Errorf("%s is not listed in the uncounted group", handled.Name)
 	}
 }
