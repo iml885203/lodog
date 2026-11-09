@@ -10,6 +10,15 @@ The problem, impact, principles and non-goals are in [docs/goal.md](docs/goal.md
 
 <p><img src="docs/assets/lodog-architecture.svg" alt="How lodog works: prepare the spec with CLI drafts and human review, run the MCP gateway between the agent and the unchanged legacy API with approvals, and prove it with score and benchmark."></p>
 
+## Install
+
+```
+curl -fsSL https://raw.githubusercontent.com/iml885203/lodog/main/install.sh | sh
+lodog skill install
+```
+
+Then tell Claude Code: *"Connect my system to lodog. The Swagger spec is at &lt;your swagger URL&gt;."* The onboarding skill runs each step and stops only for your decisions. The manual path is in [docs/getting-started.md](docs/getting-started.md).
+
 ## The name
 
 **lodog = 老狗, "old dog"** (老 is pronounced *lou* in Cantonese).

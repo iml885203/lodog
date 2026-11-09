@@ -10,6 +10,15 @@
 
 <p><img src="docs/assets/lodog-architecture.svg" alt="lodog 架構：準備、執行、證明"></p>
 
+## 安裝
+
+```
+curl -fsSL https://raw.githubusercontent.com/iml885203/lodog/main/install.sh | sh
+lodog skill install
+```
+
+然後對 Claude Code 說：「幫我把這個系統接上 lodog，swagger 在 &lt;你的 swagger URL&gt;」。接入 skill 會自己跑每一步，只在需要你判斷時停下來。手動步驟見 [docs/getting-started.md](docs/getting-started.md)。
+
 ## 名字
 
 **lodog = 老狗**（「老」粵語念 lou）。

@@ -1,0 +1,43 @@
+name: Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - internal/report/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # The sample report is built from the synthetic fixtures, never real runs.
+      - run: make report-preview
+      - run: |
+          mkdir -p _site/report
+          cp -R site/. _site/
+          cp bin/report-preview/full.html _site/report/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

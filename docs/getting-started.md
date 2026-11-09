@@ -19,15 +19,14 @@ skill 包在 lodog 執行檔裡，不用 clone repo；升級 lodog 後再裝一�
 
 ## 1. 下載 lodog
 
-[Releases 頁面](https://github.com/iml885203/lodog/releases) 提供已發版的執行檔；這是 private repo，下載需要 GitHub 權限。尚未發版時可 clone 後執行 `make build`，使用 `bin/lodog`。
+一行裝好，會自動判斷 OS 與 CPU、比對 checksum，裝到 `~/.local/bin`（不用 sudo）：
 
 ```bash
-gh release download <vX.Y.Z> --repo iml885203/lodog \
-  --pattern lodog_darwin_arm64 --pattern checksums.txt
-shasum -a 256 -c checksums.txt --ignore-missing     # lodog_darwin_arm64: OK
-chmod +x lodog_darwin_arm64 && mv lodog_darwin_arm64 /usr/local/bin/lodog
+curl -fsSL https://raw.githubusercontent.com/iml885203/lodog/main/install.sh | sh
 lodog --version
 ```
+
+要指定版本或位置，在 `sh` 前面加環境變數：`curl -fsSL …/install.sh | LODOG_VERSION=vX.Y.Z LODOG_INSTALL_DIR=/usr/local/bin sh`（`/usr/local/bin` 可能要 sudo）。也可以從 [Releases 頁面](https://github.com/iml885203/lodog/releases) 手動下載 `lodog_<os>_<arch>`，或 clone 後執行 `make build`，使用 `bin/lodog`。
 
 預期輸出（版本號是你下載的那一版）：
 
@@ -37,7 +36,6 @@ lodog version vX.Y.Z
 
 | 常見錯誤 | 原因與處理 |
 |---|---|
-| 用 `curl` 下載的檔案是 HTML（`lodog: line 1: syntax error near unexpected token 'newline'`） | 沒登入，下載到的是登入頁；用瀏覽器或 `gh release download` |
 | macOS 執行後立刻被結束（`killed`，exit 137）或跳出「無法驗證開發者」 | 瀏覽器下載的檔案帶隔離標記，執行檔沒有簽章；`xattr -d com.apple.quarantine /usr/local/bin/lodog` |
 | `command not found: lodog` | 執行檔不在 PATH；確認放的資料夾在 `$PATH` 裡 |
 
