@@ -646,6 +646,9 @@ main.langin { animation: langin .16s var(--ease); }
     else { run(); }
   }
   function pickLang() {
+    // ?lang=en in the link wins, so a page that links the report picks its language.
+    var q = (/[?&]lang=(zh|en)\b/.exec(location.search) || [])[1];
+    if (q) return q;
     try { var s = localStorage.getItem(LANG_KEY); if (s === "zh" || s === "en") return s; } catch (e) {}
     return /^zh/i.test(navigator.language || "") ? "zh" : "en";
   }
