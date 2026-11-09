@@ -7,7 +7,7 @@
 <meta name="description" content="An MCP gateway that lets agents operate your legacy system safely. No code changes, just a Swagger spec.">
 <meta property="og:title" content="lodog · teach old APIs new tricks">
 <meta property="og:description" content="An MCP gateway that lets agents operate your legacy system safely. No code changes, just a Swagger spec.">
-<meta property="og:image" content="https://iml885203.github.io/lodog/report.png">
+<meta property="og:image" content="https://lodog.dotw.me/report.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,8 +78,7 @@
 
   .start { padding: 88px 0 96px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
   .term { width: 100%; max-width: 820px; background: var(--dark); color: var(--dark-ink); border-radius: 16px; padding: 24px 28px; }
-  .term .c { color: #7f949c; }
-
+  
   footer { border-top: 1px solid #e3e9e4; }
   footer .wrap { padding-top: 28px; padding-bottom: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; font-size: 14px; color: var(--soft); }
   footer .links { display: flex; flex-wrap: wrap; gap: 24px; }
@@ -171,14 +170,11 @@ lodog skill install</pre>
   </section>
 
   <section id="start" class="wrap start">
-    <h2>Or do it by hand.</h2>
+    <h2>Four commands to Claude Code.</h2>
     <div class="term">
-<pre><span class="c"># how agent-ready is it today?</span>
-lodog score petstore3.json
-<span class="c"># set up a case, start the gateway</span>
+<pre>lodog score petstore3.json
 lodog init petstore --swagger petstore3.json --upstream https://petstore3.swagger.io/api/v3
 lodog serve -c petstore/gateway/L1.yaml
-<span class="c"># connect Claude Code</span>
 claude mcp add --transport http petstore http://127.0.0.1:7400/mcp</pre>
     </div>
     <a href="https://github.com/iml885203/lodog/blob/main/docs/getting-started.md" style="font-weight: 600;">Read the full guide</a>
