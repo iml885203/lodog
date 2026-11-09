@@ -32,8 +32,23 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 echo "install-golangci: fetching ${archive}"
-curl -sSfL "${base}/${archive}" -o "${work}/${archive}"
-curl -sSfL "${base}/golangci-lint-${bare}-checksums.txt" -o "${work}/checksums.txt"
+# github.com/<repo>/releases/download/ answers 504 for some assets for minutes
+# at a time, while the same asset still downloads through the REST API. Try the
+# plain URL first, then the API, rather than fail the build with no code change.
+# The checksum below is verified either way.
+api="https://api.github.com/repos/golangci/golangci-lint/releases"
+fetch() {
+	local name="$1" out="$2" url
+	curl -sSfL --retry 2 --retry-delay 3 --retry-all-errors "${base}/${name}" -o "$out" && return 0
+	echo "install-golangci: ${name} download failed, trying the GitHub API" >&2
+	# The release JSON lists each asset's API url line before its name line.
+	url="$(curl -sSfL --retry 3 --retry-delay 5 --retry-all-errors "${api}/tags/${version}" |
+		awk -v n="\"name\": \"${name}\"" '/"url": ".*\/releases\/assets\// { u = $2 } index($0, n) { gsub(/[",]/, "", u); print u; exit }')"
+	[ -n "$url" ] || { echo "install-golangci: ${name} not in release ${version}" >&2; return 1; }
+	curl -sSfL --retry 3 --retry-delay 5 --retry-all-errors -H 'Accept: application/octet-stream' "$url" -o "$out"
+}
+fetch "${archive}" "${work}/${archive}"
+fetch "golangci-lint-${bare}-checksums.txt" "${work}/checksums.txt"
 
 # Verify before unpacking. An archive that does not match its published
 # checksum is not unpacked at all, let alone executed.

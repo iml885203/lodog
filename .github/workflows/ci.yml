@@ -12,6 +12,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # The pinned golangci-lint, so most runs skip the download entirely.
+      # Release builds do not use this cache: they always fetch and verify.
+      - uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ hashFiles('Makefile', 'scripts/install-golangci.sh') }}
       - run: make tools
       - run: make verify
         env:
