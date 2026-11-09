@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Bare",
+    "version": "1"
+  },
+  "paths": {
+    "/things": {
+      "get": {
+        "summary": "List things",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a thing",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {}
+  },
+  "servers": [
+    {
+      "url": "https://bare.example.test"
+    }
+  ]
+}

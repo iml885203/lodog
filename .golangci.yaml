@@ -1,0 +1,49 @@
+# The linter set stands in for code review: no human reads this code by hand,
+# so anything a reviewer would have caught has to be caught here or not at all.
+# Upgrading the pinned version (Makefile) is a
+# deliberate change.
+version: "2"
+run:
+  tests: true
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - errcheck
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - gochecknoinits
+    - gocritic
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+  settings:
+    forbidigo:
+      forbid:
+        # Structured logging only (log/slog). The CLI writes user output through
+        # the cobra command's writers, never through fmt.Print.
+        - pattern: ^fmt\.Print.*$
+          msg: write through the command's OutOrStdout/ErrOrStderr, or log with slog
+        - pattern: ^log\.(Print|Fatal|Panic).*$
+          msg: use log/slog
+    gocyclo:
+      min-complexity: 15
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+formatters:
+  enable:
+    - gofumpt

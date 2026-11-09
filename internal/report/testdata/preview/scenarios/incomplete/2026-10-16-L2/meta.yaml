@@ -1,0 +1,13 @@
+run_id: 2026-10-16-L2
+level: L2
+case: testdata/preview/shop
+gateway_config: testdata/preview/shop/gateway/L2.yaml
+rubric_version: 1
+started_at: 2026-10-16T03:00:00Z
+attempts:
+  - {task: T1, attempt: 1, status: done, transcript: transcripts/T1-1.jsonl}
+  - {task: T2, attempt: 1, status: done, transcript: transcripts/T2-1.jsonl}
+  - {task: T3, attempt: 1, status: done, transcript: transcripts/T3-1.jsonl}
+  - {task: T4, attempt: 1, status: done, transcript: transcripts/T4-1.jsonl}
+  - {task: T5, attempt: 1, status: done, transcript: transcripts/T5-1.jsonl}
+  - {task: T6, attempt: 1, status: failed, transcript: transcripts/T6-1.jsonl}

@@ -1,0 +1,1258 @@
+# Drafted by `lodog workflows draft` from cases/keycloak/spec/openapi.json with cases/keycloak/spec/overlay.yaml; model claude-opus-5-5.
+# A draft for a person to review before an L2 or L3 gateway serves it (docs/levels.md):
+# check every needsReview workflow, the inputs and the fixed parameter values.
+arazzo: 1.0.1
+info:
+    title: Keycloak Admin REST API task tools
+    version: "1"
+    description: This API administers Keycloak identity realms (tenants). The domains are realms, users (accounts, sessions, lockouts, groups, roles), groups, realm roles, clients (applications), organizations (members and invitations), and the login and admin audit logs. Every tool needs a realm name. If the operator does not give one, call list_realms first. For a person, start with find_users to get the userId. The username-based read tools (get_user_roles, list_user_groups, list_user_sessions, check_user_lockout) look the user up themselves. For 'why can't X log in' questions, check_user_lockout, get_user (enabled, requiredActions) and list_login_events cover most cases. For 'who changed what', use list_admin_events. The usual order is find, then read details, then act. Every write tool (unlock_user, set_user_enabled, send_verify_email, logout_user, create_user, add_user_to_group, remove_user_from_group, assign_realm_role_to_user) is held by the gateway for human approval before it runs. Tell the operator the change is pending approval, not done. Event logs take date bounds and default to the last 30 days.
+sourceDescriptions:
+    - name: keycloak
+      url: openapi.json
+      type: openapi
+workflows:
+    - workflowId: list_realms
+      summary: List the realms (tenants) the admin can see.
+      description: Returns the realms with basic fields only (realm name, display name, enabled).
+      steps:
+        - stepId: realms
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+      x-agent:
+        whenToUse: The operator has not said which realm, asks which realms exist, or you need a valid realm name for any other tool.
+        whenNotToUse: You already know the realm name. Do not use it to read a realm's detailed configuration.
+        risk: read
+        next:
+            - find_users
+            - find_groups
+            - find_clients
+            - find_organizations
+    - workflowId: find_users
+      summary: Search user accounts in a realm by text, username, email or status.
+      description: Returns a page of matching users in brief form, with id, username, email, names, enabled and emailVerified. The id is the userId the other user tools need.
+      inputs:
+        properties:
+            email:
+                description: Filter by email address (partial match).
+                type: string
+            enabled:
+                description: true = only enabled accounts, false = only disabled accounts. Omit for both.
+                type: boolean
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Users per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name, e.g. 'master'.
+                type: string
+            search:
+                description: Free text matched against username, first name, last name and email.
+                type: string
+            username:
+                description: Filter by username (partial match).
+                type: string
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: search
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: email
+              in: query
+              value: $inputs.email
+            - name: enabled
+              in: query
+              value: $inputs.enabled
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: search
+              in: query
+              value: $inputs.search
+            - name: username
+              in: query
+              value: $inputs.username
+      x-agent:
+        whenToUse: Finding a person, getting their userId, or listing disabled accounts (enabled=false).
+        whenNotToUse: You already have the userId and want the full record (use get_user). For members of a group use list_group_members. For members of a role use list_role_members.
+        risk: read
+        next:
+            - get_user
+            - get_user_roles
+            - list_user_groups
+            - check_user_lockout
+            - list_login_events
+    - workflowId: get_user
+      summary: Get the full record of one user by userId.
+      description: 'Returns the full user record: username, email, names, enabled, emailVerified, attributes, requiredActions, createdTimestamp and federation link.'
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: user
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}/get'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: You have a userId (from find_users or an event) and need account status, attributes or pending required actions.
+        whenNotToUse: You only know a name or email (use find_users first). For roles use get_user_roles. For groups use list_user_groups.
+        risk: read
+        next:
+            - check_user_lockout
+            - list_user_sessions
+            - set_user_enabled
+            - send_verify_email
+    - workflowId: get_user_roles
+      summary: Show the realm and client roles directly assigned to a user, looked up by username.
+      description: 'Finds the user by exact username, then returns their direct role mappings: realmMappings and clientMappings.'
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            username:
+                description: Exact username of the user.
+                type: string
+        required:
+            - realm
+            - username
+        type: object
+      steps:
+        - stepId: find
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/get'
+          parameters:
+            - name: exact
+              in: query
+              value: true
+            - name: max
+              in: query
+              value: 1
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: username
+              in: query
+              value: $inputs.username
+          outputs:
+            userId: $response.body#/0/id
+        - stepId: roles
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1role-mappings/get'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $steps.find.outputs.userId
+      x-agent:
+        whenToUse: The operator asks what roles or permissions a user has.
+        whenNotToUse: Asking who holds a given role (use list_role_members). Granting a role (use assign_realm_role_to_user).
+        risk: read
+        next:
+            - assign_realm_role_to_user
+            - list_user_groups
+    - workflowId: list_user_groups
+      summary: List the groups a user belongs to, looked up by username.
+      description: Finds the user by exact username, then returns a page of their groups with id, name and path.
+      inputs:
+        properties:
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Groups per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            username:
+                description: Exact username of the user.
+                type: string
+        required:
+            - realm
+            - username
+        type: object
+      steps:
+        - stepId: find
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/get'
+          parameters:
+            - name: exact
+              in: query
+              value: true
+            - name: max
+              in: query
+              value: 1
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: username
+              in: query
+              value: $inputs.username
+          outputs:
+            userId: $response.body#/0/id
+        - stepId: groups
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1groups/get'
+          parameters:
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $steps.find.outputs.userId
+      x-agent:
+        whenToUse: The operator asks which groups or teams a user is in, or needs a groupId before removing the user from a group.
+        whenNotToUse: Listing everyone in a group (use list_group_members).
+        risk: read
+        next:
+            - add_user_to_group
+            - remove_user_from_group
+    - workflowId: list_user_sessions
+      summary: List a user's active login sessions, looked up by username.
+      description: Finds the user by exact username, then returns their active sessions with session id, IP address, start, lastAccess and the clients used.
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            username:
+                description: Exact username of the user.
+                type: string
+        required:
+            - realm
+            - username
+        type: object
+      steps:
+        - stepId: find
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/get'
+          parameters:
+            - name: exact
+              in: query
+              value: true
+            - name: max
+              in: query
+              value: 1
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: username
+              in: query
+              value: $inputs.username
+          outputs:
+            userId: $response.body#/0/id
+        - stepId: sessions
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1sessions/get'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $steps.find.outputs.userId
+      x-agent:
+        whenToUse: The operator asks whether or where a user is currently logged in.
+        whenNotToUse: Past logins or failures (use list_login_events). All sessions of one application (use list_client_sessions).
+        risk: read
+        next:
+            - logout_user
+    - workflowId: check_user_lockout
+      summary: Check whether a user is locked out after failed logins, looked up by username.
+      description: 'Finds the user by exact username, then returns their brute-force status: whether they are disabled by lockout, the number of failures, and the last failure time and IP.'
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            username:
+                description: Exact username of the user.
+                type: string
+        required:
+            - realm
+            - username
+        type: object
+      steps:
+        - stepId: find
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/get'
+          parameters:
+            - name: exact
+              in: query
+              value: true
+            - name: max
+              in: query
+              value: 1
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: username
+              in: query
+              value: $inputs.username
+          outputs:
+            userId: $response.body#/0/id
+        - stepId: status
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1attack-detection~1brute-force~1users~1{userId}/get'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: userId
+              in: path
+              value: $steps.find.outputs.userId
+      outputs:
+        userId: $steps.find.outputs.userId
+      x-agent:
+        whenToUse: A user cannot log in or reports being locked out.
+        whenNotToUse: Account disabled by an admin (see get_user, enabled). History of login attempts (use list_login_events).
+        risk: read
+        next:
+            - unlock_user
+            - list_login_events
+    - workflowId: list_login_events
+      summary: List recent user events (logins, failed logins, logouts, registrations) in a realm.
+      description: Returns a page of user events, newest first, with type, time, userId, clientId, ipAddress, error and details.
+      inputs:
+        properties:
+            clientId:
+                description: Only events of this application (its clientId string, e.g. 'account').
+                type: string
+            eventType:
+                description: Only this event type, e.g. LOGIN, LOGIN_ERROR, LOGOUT, REGISTER.
+                type: string
+            from:
+                description: Earliest event time.
+                format: date-time
+                type: string
+                x-default: now-30d
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Events per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            to:
+                description: Latest event time.
+                format: date-time
+                type: string
+                x-default: now
+            userId:
+                description: Only events of this user (UUID from find_users, not the username).
+                type: string
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: events
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1events/get'
+          parameters:
+            - name: client
+              in: query
+              value: $inputs.clientId
+            - name: dateFrom
+              in: query
+              value: $inputs.from
+            - name: dateTo
+              in: query
+              value: $inputs.to
+            - name: direction
+              in: query
+              value: desc
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: type
+              in: query
+              value: $inputs.eventType
+            - name: user
+              in: query
+              value: $inputs.userId
+      x-agent:
+        whenToUse: Investigating login attempts or failures for a user or application within a period. Set eventType=LOGIN_ERROR to see only failed logins.
+        whenNotToUse: Admin changes to configuration or users (use list_admin_events). Current sessions (use list_user_sessions).
+        risk: read
+        next:
+            - get_user
+            - check_user_lockout
+        needsReview: true
+    - workflowId: list_admin_events
+      summary: 'Search the admin audit log of a realm: who changed what and when.'
+      description: Returns a page of admin events, newest first, with time, operationType, resourceType, resourcePath, the acting admin (authDetails) and any error.
+      inputs:
+        properties:
+            from:
+                description: Earliest event time.
+                format: date-time
+                type: string
+                x-default: now-30d
+            operationType:
+                description: CREATE, UPDATE, DELETE or ACTION.
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Events per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            resourcePath:
+                description: Path of the affected resource, e.g. 'users/<userId>'. Wildcards such as * may work.
+                type: string
+            resourceType:
+                description: Kind of resource changed, e.g. USER, GROUP, REALM_ROLE, CLIENT, GROUP_MEMBERSHIP, REALM_ROLE_MAPPING.
+                type: string
+            to:
+                description: Latest event time.
+                format: date-time
+                type: string
+                x-default: now
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: events
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1admin-events/get'
+          parameters:
+            - name: dateFrom
+              in: query
+              value: $inputs.from
+            - name: dateTo
+              in: query
+              value: $inputs.to
+            - name: direction
+              in: query
+              value: desc
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: operationTypes
+              in: query
+              value: $inputs.operationType
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: resourcePath
+              in: query
+              value: $inputs.resourcePath
+            - name: resourceTypes
+              in: query
+              value: $inputs.resourceType
+      x-agent:
+        whenToUse: The operator asks who created, changed or deleted a user, group, role or client, or what admin actions happened in a period.
+        whenNotToUse: User logins or login failures (use list_login_events).
+        risk: read
+        next:
+            - get_user
+        needsReview: true
+    - workflowId: find_groups
+      summary: List or search the groups of a realm by name.
+      description: Returns a page of groups with id, name, path and subGroupCount.
+      inputs:
+        properties:
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Groups per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            search:
+                description: Text to match against group names (partial match).
+                type: string
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: groups
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1groups/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: search
+              in: query
+              value: $inputs.search
+            - name: subGroupsCount
+              in: query
+              value: true
+      x-agent:
+        whenToUse: Finding a group's id or full path, or browsing the groups of a realm.
+        whenNotToUse: Listing who is in a group (use list_group_members). Listing a user's groups (use list_user_groups). Groups inside an organization are not covered here.
+        risk: read
+        next:
+            - list_group_members
+            - add_user_to_group
+    - workflowId: list_group_members
+      summary: List the users in a group, given the group's path.
+      description: Looks up the group by its full path, then returns a page of its member users with id, username, email and enabled.
+      inputs:
+        properties:
+            groupPath:
+                description: Full group path, parents separated by '/', e.g. 'Sales/EMEA'. Get it from find_groups.
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Members per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+        required:
+            - groupPath
+            - realm
+        type: object
+      steps:
+        - stepId: group
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1group-by-path~1{path}/get'
+          parameters:
+            - name: path
+              in: path
+              value: $inputs.groupPath
+            - name: realm
+              in: path
+              value: $inputs.realm
+          outputs:
+            groupId: $response.body#/id
+        - stepId: members
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1groups~1{group-id}~1members/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: group-id
+              in: path
+              value: $steps.group.outputs.groupId
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+      x-agent:
+        whenToUse: The operator asks who is in a group or team.
+        whenNotToUse: Members of an organization (use list_organization_members). A user's own groups (use list_user_groups).
+        risk: read
+        next:
+            - get_user
+            - remove_user_from_group
+    - workflowId: list_role_members
+      summary: List the users who directly hold a realm role.
+      description: Returns a page of users with the named realm role directly assigned, with id, username, email and enabled. Users who get the role through a group are not included.
+      inputs:
+        properties:
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Users per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            roleName:
+                description: Exact realm role name (case-sensitive).
+                type: string
+        required:
+            - realm
+            - roleName
+        type: object
+      steps:
+        - stepId: users
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1roles~1{role-name}~1users/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: role-name
+              in: path
+              value: $inputs.roleName
+      x-agent:
+        whenToUse: The operator asks who has a role, e.g. who are the admins.
+        whenNotToUse: Roles of one specific user (use get_user_roles).
+        risk: read
+        next:
+            - get_user
+            - get_user_roles
+    - workflowId: find_clients
+      summary: Find the applications (clients) registered in a realm.
+      description: Returns a page of clients with id (internal UUID), clientId, name, enabled, protocol, rootUrl and redirectUris.
+      inputs:
+        properties:
+            clientId:
+                description: Text to match in the application's clientId (partial match).
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Clients per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: clients
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1clients/get'
+          parameters:
+            - name: clientId
+              in: query
+              value: $inputs.clientId
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: search
+              in: query
+              value: true
+      x-agent:
+        whenToUse: The operator asks which applications exist, or about one application's basic settings or whether it is enabled.
+        whenNotToUse: Who is logged in to an application (use list_client_sessions).
+        risk: read
+        next:
+            - list_client_sessions
+            - list_login_events
+    - workflowId: list_client_sessions
+      summary: List users currently logged in to one application.
+      description: Looks up the application by its exact clientId, then returns a page of its active sessions with username, userId, IP address, start and lastAccess.
+      inputs:
+        properties:
+            clientId:
+                description: Exact clientId of the application, e.g. 'account'.
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Sessions per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+        required:
+            - clientId
+            - realm
+        type: object
+      steps:
+        - stepId: client
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1clients/get'
+          parameters:
+            - name: clientId
+              in: query
+              value: $inputs.clientId
+            - name: max
+              in: query
+              value: 1
+            - name: realm
+              in: path
+              value: $inputs.realm
+          outputs:
+            clientUuid: $response.body#/0/id
+        - stepId: sessions
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1clients~1{client-uuid}~1user-sessions/get'
+          parameters:
+            - name: client-uuid
+              in: path
+              value: $steps.client.outputs.clientUuid
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+      x-agent:
+        whenToUse: The operator asks who is logged in to an application right now.
+        whenNotToUse: Sessions of a single user (use list_user_sessions).
+        risk: read
+        next:
+            - logout_user
+            - get_user
+    - workflowId: find_organizations
+      summary: List or search organizations in a realm by name, alias or domain.
+      description: Returns a page of organizations with id, name, alias, enabled and domains.
+      inputs:
+        properties:
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Organizations per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            search:
+                description: Text matched against organization name, alias or domain.
+                type: string
+        required:
+            - realm
+        type: object
+      steps:
+        - stepId: orgs
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1organizations/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: search
+              in: query
+              value: $inputs.search
+      x-agent:
+        whenToUse: Finding an organization or its orgId.
+        whenNotToUse: Listing an organization's people (use list_organization_members) or its invitations (use list_organization_invitations).
+        risk: read
+        next:
+            - list_organization_members
+            - list_organization_invitations
+    - workflowId: list_organization_members
+      summary: List or search the members of an organization.
+      description: Returns a page of member users with id, username, email, enabled and membershipType.
+      inputs:
+        properties:
+            orgId:
+                description: Organization id (UUID), from find_organizations.
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Members per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            search:
+                description: Text matched against member username, email or names.
+                type: string
+        required:
+            - orgId
+            - realm
+        type: object
+      steps:
+        - stepId: members
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1organizations~1{org-id}~1members/get'
+          parameters:
+            - name: briefRepresentation
+              in: query
+              value: true
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: org-id
+              in: path
+              value: $inputs.orgId
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: search
+              in: query
+              value: $inputs.search
+      x-agent:
+        whenToUse: The operator asks who belongs to an organization, or whether a person is a member.
+        whenNotToUse: Members of a realm group (use list_group_members). People invited but not yet joined (use list_organization_invitations).
+        risk: read
+        next:
+            - get_user
+    - workflowId: list_organization_invitations
+      summary: List pending and past invitations of an organization.
+      description: Returns a page of invitations with email, names, status, sentDate and expiresAt.
+      inputs:
+        properties:
+            email:
+                description: Filter by invitee email address.
+                type: string
+            orgId:
+                description: Organization id (UUID), from find_organizations.
+                type: string
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Invitations per page.
+                maximum: 50
+                type: integer
+            realm:
+                description: Realm name.
+                type: string
+            status:
+                description: Invitation status filter, likely PENDING or EXPIRED. Allowed values are not documented.
+                type: string
+        required:
+            - orgId
+            - realm
+        type: object
+      steps:
+        - stepId: invitations
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1organizations~1{org-id}~1invitations/get'
+          parameters:
+            - name: email
+              in: query
+              value: $inputs.email
+            - name: first
+              in: query
+              value: $inputs.page
+            - name: max
+              in: query
+              value: $inputs.pageSize
+            - name: org-id
+              in: path
+              value: $inputs.orgId
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: status
+              in: query
+              value: $inputs.status
+      x-agent:
+        whenToUse: The operator asks who has been invited to an organization, or whether an invitation for an email is still pending or has expired.
+        whenNotToUse: People who already joined (use list_organization_members).
+        risk: read
+        next:
+            - list_organization_members
+        needsReview: true
+    - workflowId: unlock_user
+      summary: Clear a user's brute-force lockout and failed-login count.
+      description: Removes the temporary lockout record for one user so they can try to log in again. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users or check_user_lockout.
+                type: string
+        required:
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: unlock
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1attack-detection~1brute-force~1users~1{userId}/delete'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: userId
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: check_user_lockout shows the user is locked out and the operator asks to unlock them.
+        whenNotToUse: Account disabled by an admin (use set_user_enabled). Never use it to unlock every user in a realm at once.
+        risk: write
+        next:
+            - check_user_lockout
+    - workflowId: set_user_enabled
+      summary: Enable or disable a user account.
+      description: Updates only the user's enabled flag. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            enabled:
+                description: true = enable the account, false = disable it.
+                type: boolean
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - enabled
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: update
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}/put'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+          requestBody:
+            contentType: application/json
+            payload:
+                enabled: $inputs.enabled
+      x-agent:
+        whenToUse: The operator asks to disable (block) or re-enable an account, e.g. for a leaver or a compromised account.
+        whenNotToUse: Temporary lockout after failed logins (use unlock_user). Do not use it to delete an account.
+        risk: write
+        next:
+            - logout_user
+            - get_user
+    - workflowId: send_verify_email
+      summary: Send or resend the email-verification message to a user.
+      description: Emails the user a link to verify their email address. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: send
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1send-verify-email/put'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: A user's emailVerified is false, or they did not receive the verification email.
+        whenNotToUse: The user has no email address on file (check with get_user).
+        risk: write
+        next:
+            - get_user
+    - workflowId: logout_user
+      summary: Sign a user out of all their sessions.
+      description: Ends every active session of the user. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users or a session listing.
+                type: string
+        required:
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: logout
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1logout/post'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: The operator asks to kick a user out everywhere, e.g. after a suspected compromise or after disabling the account.
+        whenNotToUse: Do not use it to log out every user in a realm.
+        risk: write
+        next:
+            - list_user_sessions
+    - workflowId: create_user
+      summary: Create a new, enabled user account.
+      description: Creates the user with username, email and names. Returns no body; the new user can then be found with find_users. Held for human approval.
+      inputs:
+        properties:
+            email:
+                description: Email address.
+                type: string
+            firstName:
+                description: First name.
+                type: string
+            lastName:
+                description: Last name.
+                type: string
+            realm:
+                description: Realm name.
+                type: string
+            username:
+                description: Username for the new account.
+                type: string
+        required:
+            - realm
+            - username
+        type: object
+      steps:
+        - stepId: create
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users/post'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+          requestBody:
+            contentType: application/json
+            payload:
+                email: $inputs.email
+                enabled: true
+                firstName: $inputs.firstName
+                lastName: $inputs.lastName
+                username: $inputs.username
+      x-agent:
+        whenToUse: The operator asks to add or register a new user.
+        whenNotToUse: The user may already exist (check with find_users first). Inviting someone into an organization is not covered here.
+        risk: write
+        next:
+            - find_users
+            - add_user_to_group
+            - send_verify_email
+    - workflowId: add_user_to_group
+      summary: Add a user to a group, given the group's path.
+      description: Looks up the group by its full path, then adds the user to it. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            groupPath:
+                description: Full group path, e.g. 'Sales/EMEA', from find_groups.
+                type: string
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - groupPath
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: group
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1group-by-path~1{path}/get'
+          parameters:
+            - name: path
+              in: path
+              value: $inputs.groupPath
+            - name: realm
+              in: path
+              value: $inputs.realm
+          outputs:
+            groupId: $response.body#/id
+        - stepId: join
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1groups~1{groupId}/put'
+          parameters:
+            - name: groupId
+              in: path
+              value: $steps.group.outputs.groupId
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: The operator asks to put a user in a group or team, or grant access that comes from group membership.
+        whenNotToUse: Granting a single role directly (use assign_realm_role_to_user).
+        risk: write
+        next:
+            - list_user_groups
+    - workflowId: remove_user_from_group
+      summary: Remove a user from a group.
+      description: Takes the user out of the group, revoking the access that came from membership. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            groupId:
+                description: Group id (UUID), from list_user_groups or find_groups.
+                type: string
+            realm:
+                description: Realm name.
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - groupId
+            - realm
+            - userId
+        type: object
+      steps:
+        - stepId: leave
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1groups~1{groupId}/delete'
+          parameters:
+            - name: groupId
+              in: path
+              value: $inputs.groupId
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+      x-agent:
+        whenToUse: The operator asks to take a user off a group or team.
+        whenNotToUse: Removing a role assigned directly to the user, which this tool does not cover. Disabling the whole account (use set_user_enabled).
+        risk: write
+        next:
+            - list_user_groups
+    - workflowId: assign_realm_role_to_user
+      summary: Grant a realm role to a user.
+      description: Looks up the realm role by name, then assigns it directly to the user. Returns no body. Held for human approval.
+      inputs:
+        properties:
+            realm:
+                description: Realm name.
+                type: string
+            roleName:
+                description: Exact realm role name (case-sensitive).
+                type: string
+            userId:
+                description: User's internal id (UUID), from find_users.
+                type: string
+        required:
+            - realm
+            - roleName
+            - userId
+        type: object
+      steps:
+        - stepId: role
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1roles~1{role-name}/get'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: role-name
+              in: path
+              value: $inputs.roleName
+          outputs:
+            roleId: $response.body#/id
+            roleName: $response.body#/name
+        - stepId: assign
+          operationPath: '{$sourceDescriptions.keycloak.url}#/paths/~1admin~1realms~1{realm}~1users~1{user-id}~1role-mappings~1realm/post'
+          parameters:
+            - name: realm
+              in: path
+              value: $inputs.realm
+            - name: user-id
+              in: path
+              value: $inputs.userId
+          requestBody:
+            contentType: application/json
+            payload:
+                - id: $steps.role.outputs.roleId
+                  name: $steps.role.outputs.roleName
+      x-agent:
+        whenToUse: The operator asks to give a user a realm role, e.g. 'make X an approver'.
+        whenNotToUse: Access should come through a team (use add_user_to_group). Roles that belong to a specific application are not covered here.
+        risk: write
+        next:
+            - get_user_roles

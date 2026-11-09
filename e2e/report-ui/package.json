@@ -1,0 +1,12 @@
+{
+  "name": "lodog-report-ui",
+  "private": true,
+  "type": "module",
+  "description": "Browser e2e for the lodog report page (make test-report-ui)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

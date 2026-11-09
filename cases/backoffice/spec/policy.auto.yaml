@@ -1,0 +1,730 @@
+# Drafted by `lodog policy draft` from cases/backoffice/spec/openapi.json; model claude-opus-5-5.
+# 232 operations: 136 decided by heuristics, 96 by the model, 31 need review.
+# A draft for an ops or risk owner to review before it is used (docs/policy.md):
+# check the rules of the risks listed first and every "needs review" line.
+# Each operation has its own rule; an operation the document did not have
+# when this was drafted falls to the default, which needs approval.
+
+# Risk levels:
+#   irreversible approval, never auto-approved cannot be undone once it runs: deletes or purges records, pays out or settles money, approves or completes a transaction, sends something outside the system
+#   money        approval                     moves money or value: payments, deposits, withdrawals, transfers, credits, refunds, balances
+#   credential   hide                         passwords, OTPs, account unlocks, tokens or keys
+#   write        approval                     creates or edits ordinary records in a way a later edit can undo
+#   internal     hide                         a service-to-service endpoint no human operator calls
+#   test         hide                         a test or debug endpoint left in the API
+#   read         allow                        looks things up
+risks:
+  credential: hide
+  internal: hide
+  irreversible:
+    action: approval
+    never_auto_approve: true
+  money: approval
+  read: allow
+  test: hide
+  write: approval
+rules:
+  # irreversible: 28 operations
+  - match: POST /api/customer/notification/announcements
+    risk: irreversible
+    why: 'needs review: model, not confident: Creates an announcement for customers by currency, which likely publishes it to customers; it may only save a draft'
+  - match: POST /api/customer/notification/personalMessages
+    risk: irreversible
+    why: 'needs review: model, not confident: Sends personal messages to customer recipients, which go outside the system; it may only queue or draft them'
+  - match: DELETE /api/banners/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/content/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/customer/notification/announcements/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/customer/notification/personalMessages/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/customer/promotion/{customerId}/bonus/{promotionId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/customer/status
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/payment/payment-unit-account/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: POST /api/payment/transaction/deposit/complete
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (complete)'
+  - match: POST /api/payment/transaction/deposit/reject
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (reject)'
+  - match: POST /api/payment/transaction/deposit/rollback
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (rollback)'
+  - match: POST /api/payment/transaction/withdraw/complete
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (complete)'
+  - match: POST /api/payment/transaction/withdraw/process
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (process)'
+  - match: POST /api/payment/transaction/withdraw/reject
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (reject)'
+  - match: POST /api/payment/transaction/withdraw/rollback
+    risk: irreversible
+    why: 'heuristic: names money (payment) and settles it (rollback)'
+  - match: DELETE /api/permissions/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: GET /api/promotion/manualBonus/issue
+    risk: irreversible
+    why: 'heuristic: names money (promotion) and settles it (issue)'
+  - match: POST /api/promotion/manualBonus/issue
+    risk: irreversible
+    why: 'heuristic: names money (promotion) and settles it (issue)'
+  - match: POST /api/promotion/rebate/batch/approve
+    risk: irreversible
+    why: 'heuristic: names money (promotion) and settles it (approve)'
+  - match: DELETE /api/promotion/rebate/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: POST /api/referrals/batch/approve
+    risk: irreversible
+    why: 'model: Approves a referral batch for the included customers, which likely releases referral rewards and cannot be undone'
+  - match: DELETE /api/referrals/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/role/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: POST /api/transfer/manual
+    risk: irreversible
+    why: 'heuristic: names money (transfer) and settles it (transfer)'
+  - match: DELETE /api/voucher/campaign
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/voucher/template
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /api/voucher/vouchers
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  # money: 20 operations
+  - match: PATCH /api/currencies
+    risk: money
+    why: 'needs review: model, not confident: Updates currency exchange rate and status, which changes the value of conversions and balances; could also be plain config'
+  - match: POST /api/currencies
+    risk: money
+    why: 'needs review: model, not confident: Adds a currency with an exchange rate that affects money conversion; could also be plain config'
+  - match: GET /api/customer/promotion/{customerId}/bonus/manualEnrollable
+    risk: money
+    why: 'needs review: model, not confident: Name suggests manual bonus enrollment tied to a deposit amount; it is probably only an eligibility check, but this is not certain'
+  - match: GET /api/payment/payment-account/withdraw/{id}
+    risk: money
+    why: 'needs review: model, not confident: GET on a withdraw payment account by id; probably a lookup, but the withdraw path leaves some doubt that it only reads'
+  - match: POST /api/voucher/campaign
+    risk: money
+    why: 'needs review: model, not confident: Creates a campaign that issues vouchers with stake options to the listed usernames, which grants value to users; it may also deliver them in a way that cannot be undone.'
+  - match: POST /api/customer/promotion/{customerId}/bonus/manual-enroll
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: PATCH /api/payment/payment-method
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: PATCH /api/payment/payment-setting/limit
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: POST /api/payment/payment-unit-account
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: PATCH /api/payment/payment-unit-account/{id}
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: PATCH /api/payment/service-provider
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: POST /api/payment/transaction/remark/save
+    risk: money
+    why: 'heuristic: changes state and names money (payment)'
+  - match: POST /api/promotion/depositBonus
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: PUT /api/promotion/depositBonus
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: POST /api/promotion/depositBonus/order
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: PATCH /api/promotion/manualBonus
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: POST /api/promotion/manualBonus
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: POST /api/promotion/manualBonus/playerCheck
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: POST /api/promotion/rebate
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  - match: PUT /api/promotion/rebate/{id}
+    risk: money
+    why: 'heuristic: changes state and names money (promotion)'
+  # credential: 10 operations
+  - match: POST /api/customer/forceUpdateCustomerVerification
+    risk: credential
+    why: 'needs review: model, not confident: Force-sets a customer''s email/phone verification status, bypassing the OTP verification flow'
+  - match: POST /api/customer/verifyPhoneNumber
+    risk: credential
+    why: 'needs review: model, not confident: Phone verification for a customer; it may send an OTP SMS outside the system (irreversible) or mark the phone verified'
+  - match: POST /api/customer/{customerId}/resetOtp
+    risk: credential
+    why: 'heuristic: names a credential (otp)'
+  - match: GET /api/customer/{customerId}/resetPassword
+    risk: credential
+    why: 'heuristic: names a credential (password)'
+  - match: POST /api/operator/create
+    risk: credential
+    why: 'model: Creates an operator account with a password, role and permissions'
+  - match: POST /api/operator/login
+    risk: credential
+    why: 'model: Operator login takes a password and issues a session or token'
+  - match: POST /api/operator/logout
+    risk: credential
+    why: 'model: Operator logout invalidates the session or token'
+  - match: POST /api/operator/resetPassword
+    risk: credential
+    why: 'heuristic: names a credential (password)'
+  - match: POST /api/operator/unlock
+    risk: credential
+    why: 'heuristic: names a credential (unlock)'
+  - match: PUT /api/operator/{id}
+    risk: credential
+    why: 'model: Updates an operator, including password, active flag, role and permissions'
+  # write: 54 operations
+  - match: POST /api/customer/notification/checkUsers
+    risk: write
+    why: 'needs review: model, not confident: Looks like a read-only lookup that validates usernames, sent as POST; a person should decide whether to allow it'
+  - match: POST /api/customer/status
+    risk: write
+    why: 'needs review: model, not confident: Sets customer status flags, which may include locking or unlocking (credential-like); the effect is unclear'
+  - match: POST /api/game/bet-limit/{currency}
+    risk: write
+    why: 'needs review: model, not confident: Sets the max win/loss per round for a currency; this is config that affects money exposure without moving money'
+  - match: POST /api/game/provider/order
+    risk: write
+    why: 'needs review: model, not confident: Likely reorders game providers, but there are no params and ''order'' is ambiguous'
+  - match: POST /api/operator
+    risk: write
+    why: 'needs review: model, not confident: POST on the operator collection with no params; could be a create or a search sent as POST and may only read'
+  - match: POST /api/permissions
+    risk: write
+    why: 'needs review: model, not confident: Creates a permission definition; this is access-control config, so a person should review it'
+  - match: PUT /api/permissions/{id}
+    risk: write
+    why: 'needs review: model, not confident: Edits a permission definition; this is access-control config, so a person should review it'
+  - match: POST /api/report/performance/casino
+    risk: write
+    why: 'needs review: model, not confident: Casino performance report sent as POST with only date range and filter body; it looks read-only, so a person should decide'
+  - match: POST /api/report/performance/casino/network-prize
+    risk: write
+    why: 'needs review: model, not confident: Casino network-prize performance report sent as POST with only filter body; it looks read-only, so a person should decide'
+  - match: POST /api/report/performance/game
+    risk: write
+    why: 'needs review: model, not confident: Game performance report sent as POST with only date range and filter body; it looks read-only, so a person should decide'
+  - match: POST /api/report/performance/game/network-prize
+    risk: write
+    why: 'needs review: model, not confident: Game network-prize performance report sent as POST with only filter body; it looks read-only, so a person should decide'
+  - match: POST /api/role
+    risk: write
+    why: 'needs review: model, not confident: Creates a role with a permission set; it is undoable, but granting permissions is privilege-sensitive and needs review'
+  - match: PUT /api/role/{id}
+    risk: write
+    why: 'needs review: model, not confident: Edits a role''s permissions; it is undoable, but it can escalate privileges and needs review'
+  - match: POST /api/sports/bet-limit/{currency}
+    risk: write
+    why: 'needs review: model, not confident: Sets sports min/max bet limits per currency; it is editable config that affects wagering money but moves none'
+  - match: POST /api/sports/spread
+    risk: write
+    why: 'needs review: model, not confident: Sets the sports odds spread; it is editable config, but it directly affects pricing and margin'
+  - match: POST /api/telemarketing/lead/{id}/check-status
+    risk: write
+    why: 'needs review: model, not confident: Checks a lead''s status via POST; it may only read or may refresh stored status, which the name does not settle'
+  - match: POST /api/telemarketing/leads/operate
+    risk: write
+    why: 'needs review: model, not confident: Runs a generic bulk action on leads; the action value is unspecified and could include deletion'
+  - match: POST /api/telemarketing/nsu-leads/refetch
+    risk: write
+    why: 'needs review: model, not confident: Triggers a refetch of new-signup leads with no params; it may be a sync job that is internal or overwrites data'
+  - match: POST /api/telemarketing/performance
+    risk: write
+    why: 'needs review: model, not confident: Telemarketing performance report sent as POST with time range and paging; it looks read-only, so a person should decide'
+  - match: POST /api/telemarketing/preview
+    risk: write
+    why: 'needs review: model, not confident: Previews an uploaded lead file; it likely only parses and returns content, but it may store the file'
+  - match: PUT /api/vip/setting
+    risk: write
+    why: 'needs review: model, not confident: Updates VIP settings; it is editable config, but the settings may include rebate or reward amounts'
+  - match: POST /api/voucher/checkUsers
+    risk: write
+    why: 'needs review: model, not confident: Looks like it only reads: it checks or validates usernames but is sent as POST, so a person should decide whether to allow it.'
+  - match: POST /api/banners
+    risk: write
+    why: 'model: Creates a banner record; a later edit or removal can undo it'
+  - match: PATCH /api/banners/orders
+    risk: write
+    why: 'model: Reorders banners within a position; a later reorder can undo it'
+  - match: PATCH /api/banners/{id}
+    risk: write
+    why: 'model: Edits an existing banner''s fields; a later edit can undo it'
+  - match: POST /api/content
+    risk: write
+    why: 'model: Creates a content record; ordinary editable data'
+  - match: PATCH /api/content/{id}
+    risk: write
+    why: 'model: Edits an existing content record; a later edit can undo it'
+  - match: POST /api/customer/crmlogs
+    risk: write
+    why: 'model: Creates a CRM support log entry for a customer'
+  - match: PATCH /api/customer/crmlogs/{logId}
+    risk: write
+    why: 'model: Edits an existing CRM log entry; a later edit can undo it'
+  - match: PATCH /api/customer/notification/announcements/{id}
+    risk: write
+    why: 'model: Edits an existing announcement''s content; a later edit can undo it'
+  - match: PATCH /api/customer/notification/personalMessages/{id}
+    risk: write
+    why: 'model: Edits an existing personal message''s content; a later edit can undo it'
+  - match: POST /api/customer/{customerId}/edit
+    risk: write
+    why: 'model: Edits a customer profile (contact details, status); a later edit can undo it'
+  - match: PUT /api/game
+    risk: write
+    why: 'model: Toggles a game''s status; a later update can revert it'
+  - match: PATCH /api/game/order
+    risk: write
+    why: 'model: Reorders the game display order; a later reorder can undo it'
+  - match: PATCH /api/game/provider
+    risk: write
+    why: 'model: Edits a game provider''s status, schedule and mapping; a later edit can revert it'
+  - match: PUT /api/game/status
+    risk: write
+    why: 'model: Sets the status of a list of games; a later edit can revert it'
+  - match: POST /api/images
+    risk: write
+    why: 'model: Uploads an image record; can be replaced or removed later'
+  - match: POST /api/marketing/tracking-tags
+    risk: write
+    why: 'model: Creates a marketing tracking tag record'
+  - match: PATCH /api/marketing/tracking-tags/{referralId}
+    risk: write
+    why: 'model: Renames an existing tracking tag; a later edit can undo it'
+  - match: POST /api/referrals
+    risk: write
+    why: 'model: Creates a referral campaign definition with incentive configuration; it is an editable record and pays nothing out itself'
+  - match: PUT /api/referrals/{id}
+    risk: write
+    why: 'model: Edits an existing referral campaign definition, and a later edit can revert it'
+  - match: POST /api/sports/status
+    risk: write
+    why: 'model: Changes the sports product status (enable/disable); it is editable config that a later edit can revert'
+  - match: POST /api/sports/um-schedule
+    risk: write
+    why: 'model: Sets the sports maintenance schedule; it is editable config that a later edit can revert'
+  - match: POST /api/telemarketing/lead/{id}/link-account
+    risk: write
+    why: 'model: Links a telemarketing lead to a customer account; unlink-account can undo it'
+  - match: POST /api/telemarketing/lead/{id}/log-call
+    risk: write
+    why: 'model: Records a call log entry against a lead; it is an ordinary record'
+  - match: POST /api/telemarketing/lead/{id}/log-call-outcome
+    risk: write
+    why: 'model: Records the outcome of a call on a lead; it is an ordinary editable record'
+  - match: POST /api/telemarketing/lead/{id}/remark
+    risk: write
+    why: 'model: Adds a remark to a lead; it is an ordinary record'
+  - match: POST /api/telemarketing/lead/{id}/unlink-account
+    risk: write
+    why: 'model: Unlinks a customer account from a lead; link-account can undo it'
+  - match: POST /api/telemarketing/leads/round-robin
+    risk: write
+    why: 'model: Assigns leads to telesales operators round-robin by filters; the assignment can be changed later'
+  - match: POST /api/telemarketing/upload
+    risk: write
+    why: 'model: Imports leads from an uploaded file with a blacklist; it creates lead records in bulk'
+  - match: PATCH /api/vip/setting/enabled
+    risk: write
+    why: 'model: Toggles a VIP tier setting for a currency; a later PATCH can switch it back.'
+  - match: PATCH /api/voucher/campaign
+    risk: write
+    why: 'model: Edits an existing voucher campaign''s content, display info and remark only; another edit can undo it.'
+  - match: PATCH /api/voucher/template
+    risk: write
+    why: 'model: Edits an existing voucher template definition; another edit can undo it.'
+  - match: POST /api/voucher/template
+    risk: write
+    why: 'model: Creates a voucher template definition without issuing vouchers to any user.'
+  # internal: 6 operations
+  - match: GET /api/internalSystem/{customerId}
+    risk: internal
+    why: 'heuristic: path segment "internalSystem" marks a service-to-service endpoint'
+  - match: GET /mgmt/internal/report/company
+    risk: internal
+    why: 'heuristic: path segment "internal" marks a service-to-service endpoint'
+  - match: GET /mgmt/internal/report/company/bet-summary-differences
+    risk: internal
+    why: 'heuristic: path segment "internal" marks a service-to-service endpoint'
+  - match: POST /mgmt/internal/report/merchant/download
+    risk: internal
+    why: 'heuristic: path segment "internal" marks a service-to-service endpoint'
+  - match: POST /mgmt/internal/report/merchant/send
+    risk: internal
+    why: 'heuristic: path segment "internal" marks a service-to-service endpoint'
+  - match: POST /mgmt/internal/telemarketing/nsu-leads/fetch
+    risk: internal
+    why: 'heuristic: path segment "internal" marks a service-to-service endpoint'
+  # test: 3 operations
+  - match: GET /api/images/TestDelete
+    risk: test
+    why: 'heuristic: path segment "TestDelete" marks a test endpoint'
+  - match: GET /api/operator/testPermission
+    risk: test
+    why: 'heuristic: path segment "testPermission" marks a test endpoint'
+  - match: GET /api/report/test-voucher
+    risk: test
+    why: 'heuristic: path segment "test-voucher" marks a test endpoint'
+  # read: 111 operations
+  - match: GET /api/banners
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/banners/details
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/banners/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/content
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/content/Linker/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/content/list
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/content/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/content/{id}/preview
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/currencies
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/bet/{betId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/casinoBetList
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/casinoBetListFile
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/gameBetList
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/gameBetListFile
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/sportsBetList
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/bet/{customerId}/sportsBetListFile
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/crmlogs
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/notification/announcements
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/notification/announcements/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/notification/personalMessages
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/notification/personalMessages/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/promotion/{customerId}/bonus
+    risk: read
+    why: 'model: GET that only reads the customer''s bonus info, with no state-changing parameters'
+  - match: GET /api/customer/promotion/{customerId}/bonus/enrollableTransaction
+    risk: read
+    why: 'model: GET that only reads a list of the customer''s transactions eligible for bonus enrollment'
+  - match: GET /api/customer/promotion/{customerId}/bonus/history
+    risk: read
+    why: 'model: GET that only reads paged and filtered bonus history'
+  - match: GET /api/customer/promotion/{customerId}/rebate/history
+    risk: read
+    why: 'model: GET that only reads paged and filtered rebate history'
+  - match: GET /api/customer/promotion/{customerId}/referral/history
+    risk: read
+    why: 'model: GET that only reads paged and filtered referral history'
+  - match: GET /api/customer/searchPlayerProfile
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/status
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/transaction/{customerId}
+    risk: read
+    why: 'model: GET that only reads a customer''s transaction records filtered by date and fund type'
+  - match: GET /api/customer/{customerId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/customer/{customerId}/wallets
+    risk: read
+    why: 'model: GET that only reads the customer''s wallet balances'
+  - match: GET /api/customer/{customerId}/wallets/v2
+    risk: read
+    why: 'model: GET that only reads the customer''s wallet balances (v2)'
+  - match: GET /api/exchange-rate
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/game
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/game/all
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/game/bet-limit
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/game/display-financial-provider-list
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/game/providerList
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/images
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/images/Get
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags/link
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags/{code}/daily-breakdown
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags/{code}/stats
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags/{code}/user-detail
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/marketing/tracking-tags/{referralId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/operator
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/operator/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/payment/payment-account/e-wallet/{id}
+    risk: read
+    why: 'model: GET lookup of one e-wallet payment account by id; only reads'
+  - match: GET /api/payment/payment-methods/{transactionType}
+    risk: read
+    why: 'model: GET list of payment methods for a transaction type; only reads'
+  - match: GET /api/payment/payment-setting/limit
+    risk: read
+    why: 'model: GET of the payment limit settings; only reads'
+  - match: GET /api/payment/transactions
+    risk: read
+    why: 'model: Paged, filtered GET search of payment transactions; only reads'
+  - match: GET /api/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/promotion/allPromotions
+    risk: read
+    why: 'model: GET list of all promotions; only reads'
+  - match: GET /api/promotion/depositBonus
+    risk: read
+    why: 'model: GET filtered list of deposit bonus promotions; only reads'
+  - match: GET /api/promotion/depositBonus/{promotionId}
+    risk: read
+    why: 'model: GET lookup of one deposit bonus promotion by id; only reads'
+  - match: GET /api/promotion/manageBonus
+    risk: read
+    why: 'model: GET filtered list of bonuses; only reads despite the ''manage'' name'
+  - match: GET /api/promotion/manualBonus
+    risk: read
+    why: 'model: GET list of manual bonus promotions; only reads'
+  - match: GET /api/promotion/manualBonus/{promotionId}
+    risk: read
+    why: 'model: GET lookup of one manual bonus promotion by id; only reads'
+  - match: GET /api/promotion/rebate
+    risk: read
+    why: 'model: GET filtered list of rebate promotions; only reads'
+  - match: GET /api/promotion/rebate/batch/completed
+    risk: read
+    why: 'model: Paged GET list of completed rebate batches; only reads'
+  - match: GET /api/promotion/rebate/batch/completed/{batchId}/customers
+    risk: read
+    why: 'model: Paged GET list of customers in a completed rebate batch; only reads'
+  - match: GET /api/promotion/rebate/batch/waiting
+    risk: read
+    why: 'model: Paged GET search of rebate batches waiting to run; only reads'
+  - match: GET /api/promotion/rebate/batch/{batchId}
+    risk: read
+    why: 'model: GET lookup of one rebate batch by id; only reads'
+  - match: GET /api/promotion/rebate/batch/{batchId}/customers
+    risk: read
+    why: 'model: Paged GET list of customers in a rebate batch; only reads'
+  - match: GET /api/referrals
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/completed
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/completed/{batchId}/customers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/completed/{batchId}/download
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/waiting
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/{batchId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/{batchId}/active-referer
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/{batchId}/customers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/{batchId}/download
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/batch/{batchId}/pending-qualifications
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/referrals/{referralId}/batch-period
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/report/company
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/report/marketing/memberPromotion
+    risk: read
+    why: 'model: GET report listing member promotions with filter and paging query params only; it only reads data'
+  - match: GET /api/report/marketing/memberPromotion/export
+    risk: read
+    why: 'model: GET export of the member promotion report using only filter query params; it returns data and changes nothing'
+  - match: GET /api/report/marketing/promotionStatistics
+    risk: read
+    why: 'model: GET promotion statistics report with filter and paging query params only; it only reads data'
+  - match: GET /api/report/marketing/promotionStatistics/export
+    risk: read
+    why: 'model: GET export of the promotion statistics report using only filter query params; it returns data and changes nothing'
+  - match: GET /api/role/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/role/rolePermissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/role/roles
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/role/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/availability
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/availability/v2
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/config
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/providers/casino
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/providers/casino/all
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/settings/providers/game
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/sports/bet-limit
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/sports/product-setting
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/sports/status
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/sports/um-schedule
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/telemarketing/lead/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/telemarketing/leads
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/telemarketing/leads/counts
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/telemarketing/telesales
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/vip/setting
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/vip/setting/defaultImages
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/activeCampaignAndVouchers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/campaign
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/campaignAndVouchers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/campaignSummary
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/game/games
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/game/providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/game/stakeOptions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/nonActiveCampaignAndVouchers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /api/voucher/templates
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /health
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+default: write

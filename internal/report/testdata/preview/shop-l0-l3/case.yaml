@@ -1,0 +1,6 @@
+name: shop
+api:
+  auth:
+    login: POST /login
+benchmark:
+  answers: expected/answers.yaml

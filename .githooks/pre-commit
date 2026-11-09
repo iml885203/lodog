@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Installed by `make hooks`. A convenience, not a gate: `git commit -n` skips
+# it and the pipeline runs these checks again.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+echo "pre-commit: format, lint, go.mod"
+if ! make --no-print-directory verify-precommit; then
+	echo
+	echo "pre-commit: refused. Fix the above, or 'git commit -n' to skip and"
+	echo "            let the pipeline tell you instead."
+	exit 1
+fi

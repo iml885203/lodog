@@ -1,0 +1,16 @@
+# Expected answers for the tasks in ../tasks.md, taken from your system's data.
+# Format and every field: docs/benchmark-task-types.md. Check it with
+#   lodog bench check --case {{.Dir}}
+tasks:
+  T01:
+    type: lookup
+    prompt: "TODO: the task as an operator would say it, in their own words"
+    # The fewest calls that answer it. The first one is also what
+    # `lodog bench draft` records against your live system.
+    endpoints_expected:
+      - "GET {{.ExampleGet}}"
+    expect:
+      # Strings the answer must contain: ids, codes, reference numbers, not
+      # words an agent may translate. Matching ignores case and thousands commas.
+      include:
+        - TODO

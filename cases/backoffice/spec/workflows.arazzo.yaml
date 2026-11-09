@@ -1,0 +1,1174 @@
+# Drafted by `lodog workflows draft --case cases/backoffice --source backoffice` (model claude-opus-5-5)
+# from spec/openapi.json with the L1 overlay, then reviewed: status, issue, channel and product
+# values completed from the document's enums, the manual-bonus recipient shape filled in from
+# BonusRecipient, the CRM log's always-required body fields given defaults, needsReview cleared.
+# Added by hand, not drafted: update_player_profile (workflow, and its name in the info description
+# below). Editing a player's remark and contact details is a common operator task and the T08 trap
+# needs a tool for it; it says in its description that the edit replaces every field.
+arazzo: 1.0.1
+info:
+    title: Backoffice task tools
+    version: "1"
+    description: 'Back-office agent for operators, customer service and finance. Domains: players (find_player, get_player_profile, get_player_balance, update_player_profile, suspend_player, unsuspend_player), player activity (list_sports_bets, list_casino_bets, list_game_bets), payments (list_deposits, list_withdrawals, approve_withdrawal, reject_withdrawal, complete_deposit, reject_deposit), bonuses (list_player_bonuses, list_player_bonus_history, cancel_player_bonus, list_enrollable_deposits, enroll_deposit_bonus, list_bonus_promotions, issue_manual_bonus), CRM (list_crm_logs, add_crm_log) and company figures (get_company_report). Almost every player question starts with find_player, which turns a username or phone number into a customerId. Pass that customerId to the other player tools. Payment actions need the refNo, actualAmount, paymentMethod and serviceProvider from a list_deposits or list_withdrawals row. Bonus actions need ids from list_player_bonuses, list_enrollable_deposits or list_bonus_promotions. Usual order: find the record, read it, then act. Every write, money or irreversible tool is held by the gateway until a human approves it. Tell the operator the request is waiting for approval and do not report it as done. Dates are ISO 8601 with an offset. Ranges default to the last 30 days.'
+sourceDescriptions:
+    - name: backoffice
+      url: openapi.json
+      type: openapi
+workflows:
+    - workflowId: find_player
+      summary: Search player accounts by username, phone, status or currency.
+      description: Returns a page of matching player profiles. Each profile has customerId, username, fullName, currency, balance, status flags, register time and last login time, plus pagination totals.
+      inputs:
+        properties:
+            currency:
+                description: Wallet currency as an ISO 4217 numeric code, e.g. 840 = USD, 156 = CNY.
+                type: integer
+            includeTestAccounts:
+                default: false
+                description: true = include test accounts, false = exclude them.
+                type: boolean
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Rows per page.
+                maximum: 50
+                type: integer
+            phone:
+                description: Full phone number including country code.
+                type: string
+            status:
+                description: 'Only one status can be filtered: 1 = Active, 2 = Suspended, 4 = Closed, 8 = Test.'
+                type: integer
+            username:
+                description: Player username or part of it. The backend decides whether matching is exact or partial.
+                type: string
+        type: object
+      steps:
+        - stepId: search
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1searchPlayerProfile/get'
+          parameters:
+            - name: Currency
+              in: query
+              value: $inputs.currency
+            - name: IncludeTestAccount
+              in: query
+              value: $inputs.includeTestAccounts
+            - name: PageNumber
+              in: query
+              value: $inputs.page
+            - name: PageSize
+              in: query
+              value: $inputs.pageSize
+            - name: Phone
+              in: query
+              value: $inputs.phone
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: Username
+              in: query
+              value: $inputs.username
+      x-agent:
+        whenToUse: First step for any player question when you only have a username or phone number. Use it to get the customerId that every other player tool needs.
+        whenNotToUse: 'You already have the customerId and want full contact or verification details: use get_player_profile. For per-currency withdrawable amounts use get_player_balance.'
+        risk: read
+        next:
+            - get_player_profile
+            - get_player_balance
+            - list_deposits
+            - list_player_bonuses
+            - list_crm_logs
+    - workflowId: get_player_profile
+      summary: Get one player's full profile, verification state and status flags.
+      description: Returns the player's username, full name, email, phone, address, date of birth, email and phone verification flags, status flags, wallet currency, register and last-login IP and time, remark, and whether the calling operator may edit the player.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: profile
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1{customerId}/get'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: 'The operator asks for a known player''s details: contact data, verification, statuses, currency, or where the player last logged in from.'
+        whenNotToUse: 'You only have a username: call find_player first. For balances use get_player_balance. For deposits and withdrawals use list_deposits or list_withdrawals.'
+        risk: read
+        next:
+            - get_player_balance
+            - list_crm_logs
+            - update_player_profile
+            - suspend_player
+            - unsuspend_player
+    - workflowId: get_player_balance
+      summary: Get a player's main wallet balance, withdrawable amount and unrolled turnover per currency.
+      description: Returns one wallet per currency with its balance, withdrawable amount and outstanding amount (the turnover still to roll over before withdrawal).
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: wallets
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1{customerId}~1wallets~1v2/get'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks how much a player has, how much the player can withdraw, or why a withdrawal is blocked by rollover.
+        whenNotToUse: For the deposits and withdrawals behind it use list_deposits or list_withdrawals. For bonus turnover progress use list_player_bonuses.
+        risk: read
+        next:
+            - list_player_bonuses
+            - list_withdrawals
+    - workflowId: list_sports_bets
+      summary: List a player's sports bets with their selections in a period.
+      description: Returns the player's sports bets in the period. Each bet has stake, price, win/lost, status, placed and settled times, parlay and resettled flags, and selections (league, teams, market, option, odds, live score). Also returns totalCount and isOverLimit.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            from:
+                description: Start of the win/lost window.
+                format: date-time
+                type: string
+                x-default: now-30d
+            language:
+                default: 0
+                description: 'Language code for team, league and market names: 0 = English (US), 80 = Simplified Chinese, 81 = Traditional Chinese.'
+                type: integer
+            status:
+                description: 'Bet status name, case-insensitive: Running, Waiting, Won, Lost, Draw, Void and so on.'
+                type: string
+            to:
+                description: End of the win/lost window.
+                format: date-time
+                type: string
+                x-default: now
+            walletCurrencies:
+                description: Optional wallet currency codes to filter on, e.g. ["USD", "BTC"].
+                items:
+                    type: string
+                type: array
+        required:
+            - customerId
+            - status
+        type: object
+      steps:
+        - stepId: bets
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1bet~1{customerId}~1sportsBetList/get'
+          parameters:
+            - name: End
+              in: query
+              value: $inputs.to
+            - name: Language
+              in: query
+              value: $inputs.language
+            - name: Start
+              in: query
+              value: $inputs.from
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: WalletCurrencies
+              in: query
+              value: $inputs.walletCurrencies
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks about a player's sports bets, parlays or sports win/loss.
+        whenNotToUse: 'Casino bets: use list_casino_bets. Slot or other game bets: use list_game_bets. For money totals use list_deposits or list_withdrawals.'
+        risk: read
+        next:
+            - add_crm_log
+    - workflowId: list_casino_bets
+      summary: List a player's casino bets in a period.
+      description: Returns the player's casino bets in the period. Each bet has betId, provider, game, stake, actual stake, win/lost, wallet currency amounts, status, IP, and placed and settled times. Also returns totalCount and isOverLimit.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            from:
+                description: Start of the window.
+                format: date-time
+                type: string
+                x-default: now-30d
+            providerIds:
+                default: []
+                description: Casino brand provider ids. An empty list is expected to mean all providers.
+                items:
+                    type: integer
+                type: array
+            status:
+                description: 'Bet status name, case-insensitive: Running, Waiting, Won, Lost, Draw, Void and so on.'
+                type: string
+            to:
+                description: End of the window.
+                format: date-time
+                type: string
+                x-default: now
+            walletCurrencies:
+                description: Optional wallet currency codes to filter on, e.g. ["USD"].
+                items:
+                    type: string
+                type: array
+        required:
+            - customerId
+            - status
+        type: object
+      steps:
+        - stepId: bets
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1bet~1{customerId}~1casinoBetList/get'
+          parameters:
+            - name: BrandProviderIds
+              in: query
+              value: $inputs.providerIds
+            - name: End
+              in: query
+              value: $inputs.to
+            - name: Start
+              in: query
+              value: $inputs.from
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: WalletCurrencies
+              in: query
+              value: $inputs.walletCurrencies
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks about a player's casino (live casino) bets, wins or losses.
+        whenNotToUse: 'Sports bets: use list_sports_bets. Slot or other game bets: use list_game_bets.'
+        risk: read
+        next:
+            - add_crm_log
+    - workflowId: list_game_bets
+      summary: List a player's game bets (slots and other non-sports, non-casino games) in a period.
+      description: Returns the player's game bets in the period. Each bet has betId, provider, game, stake, win/lost, wallet amounts, voucher flag, status, IP, placed time and winlostDateOffset. Also returns totalCount and isOverLimit.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            from:
+                description: Start of the window.
+                format: date-time
+                type: string
+                x-default: now-30d
+            providerIds:
+                default: []
+                description: Game brand provider ids. An empty list may mean all providers; this is not confirmed.
+                items:
+                    type: integer
+                type: array
+            status:
+                description: 'Bet status name, case-insensitive: Running, Waiting, Won, Lost, Draw, Void and so on.'
+                type: string
+            to:
+                description: End of the window.
+                format: date-time
+                type: string
+                x-default: now
+            walletCurrencies:
+                description: Optional wallet currency codes to filter on, e.g. ["USD"].
+                items:
+                    type: string
+                type: array
+        required:
+            - customerId
+            - status
+        type: object
+      steps:
+        - stepId: bets
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1bet~1{customerId}~1gameBetList/get'
+          parameters:
+            - name: BrandProviderIds
+              in: query
+              value: $inputs.providerIds
+            - name: End
+              in: query
+              value: $inputs.to
+            - name: Start
+              in: query
+              value: $inputs.from
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: WalletCurrencies
+              in: query
+              value: $inputs.walletCurrencies
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks about a player's slot or game bets or game history.
+        whenNotToUse: 'Sports bets: use list_sports_bets. Live casino bets: use list_casino_bets.'
+        risk: read
+        next:
+            - add_crm_log
+    - workflowId: list_deposits
+      summary: List deposit transactions with status, provider and player filters.
+      description: Returns a page of deposits. Each row has refNo, username, requested and actual amount, currency, payment method, service provider, status, direct-pay info, operator remark, last modifier and timestamps. Also returns pagination totals.
+      inputs:
+        properties:
+            from:
+                description: Earliest transaction start time.
+                format: date-time
+                type: string
+                x-default: now-30d
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Rows per page.
+                maximum: 50
+                type: integer
+            search:
+                description: Player username (partial match) or a transaction reference number.
+                type: string
+            serviceProvider:
+                description: Payment provider code, exact match. Leave empty for all providers.
+                type: string
+            status:
+                description: 'Comma-separated status numbers: 1 = Pending (started, waiting for an operator), 2 = Processing (sent to the provider), 3 = Done, 4 = Rejected, 5 = Expired. Example "1,2". Omit for all.'
+                type: string
+            to:
+                description: Latest transaction start time.
+                format: date-time
+                type: string
+                x-default: now
+        type: object
+      steps:
+        - stepId: list
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transactions/get'
+          parameters:
+            - name: FuzzySearch
+              in: query
+              value: $inputs.search
+            - name: PageNumber
+              in: query
+              value: $inputs.page
+            - name: PageSize
+              in: query
+              value: $inputs.pageSize
+            - name: ServiceProvider
+              in: query
+              value: $inputs.serviceProvider
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: TransactionStartDateEnd
+              in: query
+              value: $inputs.to
+            - name: TransactionStartDateFrom
+              in: query
+              value: $inputs.from
+            - name: TransactionType
+              in: query
+              value: 1
+      x-agent:
+        whenToUse: 'The operator wants to find or check deposits: pending deposits, a player''s deposits, or one deposit by reference number. Use it before complete_deposit or reject_deposit to get the refNo and amounts.'
+        whenNotToUse: For withdrawals use list_withdrawals. For bet-level detail use list_sports_bets, list_casino_bets or list_game_bets.
+        risk: read
+        next:
+            - complete_deposit
+            - reject_deposit
+            - list_enrollable_deposits
+    - workflowId: list_withdrawals
+      summary: List withdrawal transactions with status, provider and player filters.
+      description: Returns a page of withdrawals. Each row has refNo, username, requested and actual amount, currency, payment method, service provider, status, customerPaymentAccountId, direct-pay info, operator remark, the player's status flags and timestamps. Also returns pagination totals.
+      inputs:
+        properties:
+            from:
+                description: Earliest transaction start time.
+                format: date-time
+                type: string
+                x-default: now-30d
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 20
+                description: Rows per page.
+                maximum: 50
+                type: integer
+            search:
+                description: Player username (partial match) or a transaction reference number.
+                type: string
+            serviceProvider:
+                description: Payment provider code, exact match. Leave empty for all providers.
+                type: string
+            status:
+                description: 'Comma-separated status numbers: 1 = Pending (started, waiting for an operator), 2 = Processing (sent to the provider), 3 = Done, 4 = Rejected, 5 = Expired. Example "1,2". Omit for all.'
+                type: string
+            to:
+                description: Latest transaction start time.
+                format: date-time
+                type: string
+                x-default: now
+        type: object
+      steps:
+        - stepId: list
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transactions/get'
+          parameters:
+            - name: FuzzySearch
+              in: query
+              value: $inputs.search
+            - name: PageNumber
+              in: query
+              value: $inputs.page
+            - name: PageSize
+              in: query
+              value: $inputs.pageSize
+            - name: ServiceProvider
+              in: query
+              value: $inputs.serviceProvider
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: TransactionStartDateEnd
+              in: query
+              value: $inputs.to
+            - name: TransactionStartDateFrom
+              in: query
+              value: $inputs.from
+            - name: TransactionType
+              in: query
+              value: 2
+      x-agent:
+        whenToUse: The operator wants pending withdrawals to approve, a player's withdrawals, or one withdrawal by reference number. Use it before approve_withdrawal or reject_withdrawal.
+        whenNotToUse: For deposits use list_deposits. To check rollover before approving, also call get_player_balance.
+        risk: read
+        next:
+            - approve_withdrawal
+            - reject_withdrawal
+            - get_player_balance
+    - workflowId: approve_withdrawal
+      summary: Approve a pending withdrawal and send the payout to the payment gateway.
+      description: Approves the withdrawal and submits it to the provider for payout. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            actualAmount:
+                description: Amount to pay out, normally the row's actualAmount or requestAmount from list_withdrawals.
+                type: number
+            paymentMethod:
+                description: The row's paymentMethod from list_withdrawals.
+                type: string
+            refNo:
+                description: Withdrawal reference number, from list_withdrawals.
+                type: string
+            remark:
+                description: Operator note saved with the action.
+                type: string
+            serviceProvider:
+                description: The row's serviceProvider from list_withdrawals.
+                type: string
+        required:
+            - actualAmount
+            - paymentMethod
+            - refNo
+            - serviceProvider
+        type: object
+      steps:
+        - stepId: process
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transaction~1withdraw~1process/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                actualAmount: $inputs.actualAmount
+                paymentMethod: $inputs.paymentMethod
+                refNo: $inputs.refNo
+                remark: $inputs.remark
+                serviceProvider: $inputs.serviceProvider
+      x-agent:
+        whenToUse: The operator approves a pending withdrawal found with list_withdrawals.
+        whenNotToUse: 'To decline the request use reject_withdrawal. You do not yet have the refNo and amounts: call list_withdrawals first.'
+        risk: money
+        next:
+            - list_withdrawals
+            - add_crm_log
+    - workflowId: reject_withdrawal
+      summary: Refuse a withdrawal and return any money already taken from the player's wallet.
+      description: Rejects the withdrawal request and refunds the wallet if it was already debited. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            refNo:
+                description: Withdrawal reference number, from list_withdrawals.
+                type: string
+            remark:
+                description: Reason for the rejection.
+                type: string
+        required:
+            - refNo
+            - remark
+        type: object
+      steps:
+        - stepId: reject
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transaction~1withdraw~1reject/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                refNo: $inputs.refNo
+                remark: $inputs.remark
+      x-agent:
+        whenToUse: The operator declines a withdrawal request, for example because of failed checks or unmet rollover.
+        whenNotToUse: 'To pay it out use approve_withdrawal. To only add a note, this tool does not fit: it changes the withdrawal''s state.'
+        risk: money
+        next:
+            - list_withdrawals
+            - add_crm_log
+    - workflowId: complete_deposit
+      summary: Manually mark a deposit as completed and credit the player, including any deposit bonus.
+      description: Credits the deposit to the player's wallet by hand and applies any deposit bonus that goes with it. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            actualAmount:
+                description: Amount actually received, to credit to the player.
+                type: number
+            paymentMethod:
+                description: The row's paymentMethod from list_deposits.
+                type: string
+            refNo:
+                description: Deposit reference number, from list_deposits.
+                type: string
+            remark:
+                description: Operator note, e.g. the bank slip or the reason for manual completion.
+                type: string
+            serviceProvider:
+                description: The row's serviceProvider from list_deposits.
+                type: string
+        required:
+            - actualAmount
+            - paymentMethod
+            - refNo
+            - serviceProvider
+        type: object
+      steps:
+        - stepId: complete
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transaction~1deposit~1complete/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                actualAmount: $inputs.actualAmount
+                paymentMethod: $inputs.paymentMethod
+                refNo: $inputs.refNo
+                remark: $inputs.remark
+                serviceProvider: $inputs.serviceProvider
+      x-agent:
+        whenToUse: The operator confirms the money arrived but the deposit is still pending, for example after a failed callback or for a direct-pay deposit.
+        whenNotToUse: To decline or claw back a deposit use reject_deposit. To add a missed bonus to an already credited deposit use enroll_deposit_bonus.
+        risk: money
+        next:
+            - list_deposits
+            - list_player_bonuses
+            - add_crm_log
+    - workflowId: reject_deposit
+      summary: Reject a deposit; if it was already credited, take the money back.
+      description: Declines a pending deposit, or cancels a completed one and debits the credited amount. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            refNo:
+                description: Deposit reference number, from list_deposits.
+                type: string
+            remark:
+                description: Reason for the rejection.
+                type: string
+        required:
+            - refNo
+            - remark
+        type: object
+      steps:
+        - stepId: reject
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1payment~1transaction~1deposit~1reject/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                refNo: $inputs.refNo
+                remark: $inputs.remark
+      x-agent:
+        whenToUse: The operator wants to decline a pending deposit, or cancel a deposit that should not have been credited.
+        whenNotToUse: 'The money did arrive and the deposit should be credited: use complete_deposit.'
+        risk: money
+        next:
+            - list_deposits
+            - add_crm_log
+    - workflowId: list_player_bonuses
+      summary: List a player's deposit bonuses that are running or waiting to start.
+      description: Returns the player's current bonuses. Each bonus has promotionId, promotion code, name and type, deposit and bonus amount, turnover against target turnover, status, reward time and remark.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: bonuses
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1promotion~1{customerId}~1bonus/get'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks what bonuses a player has right now, how far the rollover has progressed, or wants the promotionId before cancel_player_bonus.
+        whenNotToUse: For expired, cancelled or completed bonuses use list_player_bonus_history. For a deposit that is missing its bonus use list_enrollable_deposits.
+        risk: read
+        next:
+            - cancel_player_bonus
+            - list_player_bonus_history
+            - get_player_balance
+    - workflowId: list_player_bonus_history
+      summary: Show a player's past and current deposit and manual bonuses in a period.
+      description: Returns a page of the player's bonuses in the period. Each bonus has promotion code, name and type, deposit and bonus amount, turnover against target, status, reward date and remark. Also returns pagination totals.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            from:
+                description: Start of the period.
+                format: date-time
+                type: string
+                x-default: now-30d
+            page:
+                default: 1
+                description: Page number, starting at 1.
+                type: integer
+            pageSize:
+                default: 15
+                description: Rows per page.
+                maximum: 50
+                type: integer
+            search:
+                description: Promotion code or name, case-insensitive.
+                type: string
+            status:
+                description: 'Bonus status: 1 = Pending, 2 = Activated, 3 = Expired, 4 = Canceled, 5 = Disqualified, 6 = Completed, 7 = Excluded, 8 = WaitingForApproval, 9 = TransferFailed. Omit for all.'
+                type: integer
+            to:
+                description: End of the period.
+                format: date-time
+                type: string
+                x-default: now
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: history
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1promotion~1{customerId}~1bonus~1history/get'
+          parameters:
+            - name: EndDate
+              in: query
+              value: $inputs.to
+            - name: PageNumber
+              in: query
+              value: $inputs.page
+            - name: PageSize
+              in: query
+              value: $inputs.pageSize
+            - name: Search
+              in: query
+              value: $inputs.search
+            - name: StartDate
+              in: query
+              value: $inputs.from
+            - name: Status
+              in: query
+              value: $inputs.status
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: The operator asks what bonuses a player received or lost, including expired, cancelled or completed ones, or looks up a player's bonus by code or name.
+        whenNotToUse: For only the currently running bonuses use list_player_bonuses. For promotion setups use list_bonus_promotions.
+        risk: read
+        next:
+            - list_player_bonuses
+    - workflowId: cancel_player_bonus
+      summary: Cancel a player's active deposit bonus and close its bonus wallet.
+      description: Revokes the bonus and closes the bonus wallet, saving the reason with the operator name. This cannot be undone. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            promotionId:
+                description: promotionId of the active bonus, probably the promotionId field from list_player_bonuses.
+                type: string
+            reason:
+                description: Why the bonus is cancelled.
+                type: string
+        required:
+            - customerId
+            - promotionId
+            - reason
+        type: object
+      steps:
+        - stepId: cancel
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1promotion~1{customerId}~1bonus~1{promotionId}/delete'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+            - name: promotionId
+              in: path
+              value: $inputs.promotionId
+            - name: reason
+              in: query
+              value: $inputs.reason
+      x-agent:
+        whenToUse: The operator asks to cancel or revoke a player's running deposit bonus, for example so the player can withdraw.
+        whenNotToUse: To give a missed bonus use enroll_deposit_bonus. To pay a goodwill bonus use issue_manual_bonus.
+        risk: irreversible
+        next:
+            - list_player_bonuses
+            - get_player_balance
+            - add_crm_log
+    - workflowId: list_enrollable_deposits
+      summary: List a player's recent deposits that can still be manually enrolled into a deposit bonus.
+      description: Returns the player's recent deposits that are eligible for manual bonus enrolment, each with referenceNumber, actualAmount and depositDate.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: deposits
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1promotion~1{customerId}~1bonus~1enrollableTransaction/get'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+      x-agent:
+        whenToUse: A player says a deposit did not get its bonus. This is the first step before enroll_deposit_bonus.
+        whenNotToUse: For all deposits regardless of bonus eligibility use list_deposits. For bonuses the player already has use list_player_bonuses.
+        risk: read
+        next:
+            - list_bonus_promotions
+            - enroll_deposit_bonus
+    - workflowId: enroll_deposit_bonus
+      summary: Manually apply a missed deposit bonus to one of a player's past deposits.
+      description: Enrols the deposit into the given deposit bonus, funded from the player's main wallet. Returns the referenceNumber, depositAmount, promotionCode and status of the enrolment. Held for human approval.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id; must own the deposit.
+                type: integer
+            promotionCode:
+                description: Code of the deposit bonus to apply (initial or re-deposit), from list_bonus_promotions.
+                type: string
+            transactionId:
+                description: The deposit's referenceNumber from list_enrollable_deposits.
+                type: string
+        required:
+            - customerId
+            - promotionCode
+            - transactionId
+        type: object
+      steps:
+        - stepId: enroll
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1promotion~1{customerId}~1bonus~1manual-enroll/post'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+          requestBody:
+            contentType: application/json
+            payload:
+                promotionCode: $inputs.promotionCode
+                transactionId: $inputs.transactionId
+      x-agent:
+        whenToUse: The operator wants to add a deposit bonus that was missed for a deposit listed by list_enrollable_deposits.
+        whenNotToUse: 'For a bonus not tied to a deposit use issue_manual_bonus. The deposit itself is still pending: use complete_deposit.'
+        risk: money
+        next:
+            - list_player_bonuses
+            - add_crm_log
+    - workflowId: list_bonus_promotions
+      summary: List deposit and manual bonus promotions by name, type or status.
+      description: Returns bonus promotions, newest first. Each has promotionId, promotionCode, name, type, status, period, bonus amount and type, min deposit, max payout, rollover times and reset period.
+      inputs:
+        properties:
+            name:
+                description: Part of the promotion name, case-insensitive.
+                type: string
+            status:
+                description: 0 = Active, 1 = Inactive, 2 = Expired. Omit for all.
+                type: integer
+            type:
+                description: 1 = InitialDeposit, 2 = ReDeposit, 4 = ManualBonus. Omit for all.
+                type: integer
+        type: object
+      steps:
+        - stepId: promotions
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1promotion~1manageBonus/get'
+          parameters:
+            - name: PromotionName
+              in: query
+              value: $inputs.name
+            - name: PromotionType
+              in: query
+              value: $inputs.type
+            - name: Status
+              in: query
+              value: $inputs.status
+      x-agent:
+        whenToUse: Use it to find a promotion's id or code before enroll_deposit_bonus or issue_manual_bonus, or when the operator asks which bonuses exist and are active.
+        whenNotToUse: For a player's own bonuses use list_player_bonuses or list_player_bonus_history.
+        risk: read
+        next:
+            - enroll_deposit_bonus
+            - issue_manual_bonus
+    - workflowId: issue_manual_bonus
+      summary: Pay a manual bonus to a list of players.
+      description: Issues the manual bonus promotion to the recipients. Returns successCount and failedCustomer (the recipients that failed). Held for human approval.
+      inputs:
+        properties:
+            promotionCode:
+                description: The same promotion's promotionCode.
+                type: string
+            promotionId:
+                description: Manual bonus promotionId, from list_bonus_promotions (type 4).
+                type: string
+            promotionName:
+                description: The same promotion's name.
+                type: string
+            recipients:
+                description: Players to pay, one entry each.
+                items:
+                    properties:
+                        amount:
+                            description: Bonus amount in the player's currency.
+                            type: number
+                        currency:
+                            description: The player's wallet currency as an ISO 4217 numeric code, e.g. 50 = BDT, 608 = PHP, 840 = USD (the player's currency comes from get_player_profile).
+                            type: integer
+                        customerId:
+                            description: Player customer id, from find_player.
+                            type: integer
+                    required:
+                        - customerId
+                        - currency
+                        - amount
+                    type: object
+                type: array
+        required:
+            - promotionCode
+            - promotionId
+            - promotionName
+            - recipients
+        type: object
+      steps:
+        - stepId: issue
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1promotion~1manualBonus~1issue/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                promotionCode: $inputs.promotionCode
+                promotionId: $inputs.promotionId
+                promotionName: $inputs.promotionName
+                recipients: $inputs.recipients
+      x-agent:
+        whenToUse: The operator wants to give manual bonus money (goodwill, compensation, campaign reward) to specific players.
+        whenNotToUse: 'For a missed deposit bonus use enroll_deposit_bonus. You do not have the promotion id: call list_bonus_promotions with type 4 first.'
+        risk: money
+        next:
+            - list_player_bonus_history
+            - add_crm_log
+    - workflowId: list_crm_logs
+      summary: List the customer-service contact logs for a player in a period.
+      description: Returns the player's CRM logs. Each log has id, channel, issue type, product, issue description, response, remark, language, and who created or modified it and when.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            from:
+                description: Start of the date range.
+                format: date-time
+                type: string
+                x-default: now-30d
+            issueType:
+                description: '1 = MemberAccountRegistration, 2 = Deposit, 3 = Promotion, 4 = Withdraw, 5 = AccountInfo, 6 = BetSettlement, 7 = MemberSiteFeatures, 8 = Report, 9 = Verification, 10 = Others.'
+                type: integer
+            to:
+                description: End of the date range.
+                format: date-time
+                type: string
+                x-default: now
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: logs
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1crmlogs/get'
+          parameters:
+            - name: customerId
+              in: query
+              value: $inputs.customerId
+            - name: end
+              in: query
+              value: $inputs.to
+            - name: issueType
+              in: query
+              value: $inputs.issueType
+            - name: start
+              in: query
+              value: $inputs.from
+      x-agent:
+        whenToUse: The operator asks what support contacts, tickets, or call or chat notes exist for a player.
+        whenNotToUse: To record a new contact use add_crm_log.
+        risk: read
+        next:
+            - add_crm_log
+    - workflowId: add_crm_log
+      summary: Record a new customer-service contact log for a player.
+      description: Saves a CRM log with channel, issue type, product, issue description, response, remark and language. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            channelType:
+                description: 'Contact channel: 1 = Email, 2 = LiveChat, 3 = PhoneCall, 4 = PersonalMessage, 5 = SocialMedia.'
+                type: integer
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            issueDescription:
+                description: What the player raised.
+                type: string
+            issueType:
+                description: '1 = MemberAccountRegistration, 2 = Deposit, 3 = Promotion, 4 = Withdraw, 5 = AccountInfo, 6 = BetSettlement, 7 = MemberSiteFeatures, 8 = Report, 9 = Verification, 10 = Others.'
+                type: integer
+            language:
+                default: 0
+                description: Language of the contact as a language code number, 0 = English (US).
+                type: integer
+            productType:
+                default: 0
+                description: 'Product the issue concerns: 0 = General, 1 = Sportsbook, 3 = LiveCasino, 4 = Games, 6 = Keno, 7 = Fishing, 11 = Others.'
+                type: integer
+            remark:
+                default: ""
+                description: Internal note.
+                type: string
+            response:
+                default: ""
+                description: What was answered or done.
+                type: string
+        required:
+            - channelType
+            - customerId
+            - issueDescription
+            - issueType
+        type: object
+      steps:
+        - stepId: create
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1crmlogs/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                crmLogChannelType: $inputs.channelType
+                crmLogIssueType: $inputs.issueType
+                crmLogProductType: $inputs.productType
+                customerId: $inputs.customerId
+                issueDescription: $inputs.issueDescription
+                language: $inputs.language
+                remark: $inputs.remark
+                response: $inputs.response
+      x-agent:
+        whenToUse: The operator wants to record a chat, call or email with a player, including what the issue was and what was answered. Use it after handling a player's request.
+        whenNotToUse: To read existing logs use list_crm_logs.
+        risk: write
+        next:
+            - list_crm_logs
+    - workflowId: update_player_profile
+      summary: Edit a player's profile fields, such as the remark, contact details or address.
+      description: Replaces the whole profile with the values sent; any field left out is cleared, not kept. Read get_player_profile first and send every current value again, changing only what the operator asked for. status is the player's current status ids from get_player_profile. Send the phone as countryCode (calling code digits only, for example 880) plus phoneNumber without the calling code; a phone number with a plus sign or dash is cleared. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            address:
+                description: Street address.
+                type: string
+            city:
+                description: City.
+                type: string
+            countryCode:
+                description: Calling code of the phone number, digits only, for example 880.
+                type: string
+            countryName:
+                description: Country name.
+                type: string
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+            dateOfBirth:
+                description: Date of birth, ISO 8601.
+                format: date-time
+                type: string
+            email:
+                description: Email address.
+                type: string
+            fullName:
+                description: Full name.
+                type: string
+            phoneNumber:
+                description: Phone number without the calling code.
+                type: string
+            postalCode:
+                description: Postal code.
+                type: string
+            province:
+                description: Province or state.
+                type: string
+            remark:
+                description: Operator remark on the player.
+                type: string
+            status:
+                description: The player's current status ids from get_player_profile (1 Active, 2 Suspended, 4 Closed, 8 TestMode, 16 KycVerified, 32 CustomizedUsername). Send them unchanged; use suspend_player to change status.
+                items:
+                    type: integer
+                type: array
+        required:
+            - customerId
+            - status
+        type: object
+      steps:
+        - stepId: edit
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1{customerId}~1edit/post'
+          parameters:
+            - name: customerId
+              in: path
+              value: $inputs.customerId
+          requestBody:
+            contentType: application/json
+            payload:
+                address: $inputs.address
+                city: $inputs.city
+                countryCode: $inputs.countryCode
+                countryName: $inputs.countryName
+                dateOfBirth: $inputs.dateOfBirth
+                email: $inputs.email
+                fullName: $inputs.fullName
+                phoneNumber: $inputs.phoneNumber
+                postalCode: $inputs.postalCode
+                province: $inputs.province
+                remark: $inputs.remark
+                status: $inputs.status
+      x-agent:
+        whenToUse: The operator asks to change a player's remark, name, email, phone, date of birth or address.
+        whenNotToUse: To suspend or unsuspend a player use suspend_player or unsuspend_player. To log a contact with the player use add_crm_log.
+        risk: write
+        next:
+            - get_player_profile
+            - add_crm_log
+    - workflowId: suspend_player
+      summary: Suspend a player's account.
+      description: Adds the Suspended status flag to the player. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: suspend
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1status/post'
+          requestBody:
+            contentType: application/json
+            payload:
+                customerId: $inputs.customerId
+                statusIds:
+                    - 2
+      x-agent:
+        whenToUse: The operator asks to suspend or block a player.
+        whenNotToUse: To lift a suspension use unsuspend_player. To only check the status use get_player_profile.
+        risk: write
+        next:
+            - get_player_profile
+            - add_crm_log
+    - workflowId: unsuspend_player
+      summary: Lift a player's suspension.
+      description: Removes the Suspended status flag from the player. Returns only a success or error code. Held for human approval.
+      inputs:
+        properties:
+            customerId:
+                description: Player customer id, from find_player.
+                type: integer
+        required:
+            - customerId
+        type: object
+      steps:
+        - stepId: unsuspend
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1customer~1status/delete'
+          requestBody:
+            contentType: application/json
+            payload:
+                customerId: $inputs.customerId
+                statusIds:
+                    - 2
+      x-agent:
+        whenToUse: The operator asks to unsuspend, unblock or reopen a suspended player.
+        whenNotToUse: To suspend a player use suspend_player.
+        risk: write
+        next:
+            - get_player_profile
+            - add_crm_log
+    - workflowId: get_company_report
+      summary: Company-wide financial summary per currency for a period.
+      description: Returns one row per currency. Each row has deposit amount and count, depositors, withdrawal amount and count, turnover, bet count, company win/lost, margin, active players, total bonus, cancelled bonus and rebate.
+      inputs:
+        properties:
+            from:
+                description: Start of the period.
+                format: date-time
+                type: string
+                x-default: now-30d
+            to:
+                description: End of the period.
+                format: date-time
+                type: string
+                x-default: now
+        type: object
+      steps:
+        - stepId: report
+          operationPath: '{$sourceDescriptions.backoffice.url}#/paths/~1api~1report~1company/get'
+          parameters:
+            - name: EndDate
+              in: query
+              value: $inputs.to
+            - name: StartDate
+              in: query
+              value: $inputs.from
+      x-agent:
+        whenToUse: 'Finance asks for company totals over a period: deposits, withdrawals, turnover, GGR or win/lost, margin, active players, or bonus and rebate cost.'
+        whenNotToUse: For one player's deposits or withdrawals use list_deposits or list_withdrawals with the username.
+        risk: read
+        next:
+            - list_deposits
+            - list_withdrawals

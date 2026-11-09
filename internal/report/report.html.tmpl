@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lodog 測試報告</title>
+<style>
+* { box-sizing: border-box; }
+/* No font is downloaded: the page must open offline. Text uses the system UI font. */
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.65 system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 72px; }
+h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; color: var(--muted); }
+h2 { font-size: 20px; margin: 56px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 16px; margin: 20px 0 6px; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--score); outline-offset: 2px; border-radius: 2px; }
+.meta, .muted { color: var(--muted); font-size: 13px; }
+.banner { background: var(--warn-bg); color: var(--warn-fg); padding: 12px 16px; border-radius: 6px; margin: 20px 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--panel); }
+th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.none { color: var(--muted); font-style: italic; }
+.bad { color: var(--bad); font-weight: 600; }
+.good { color: var(--good); font-weight: 600; }
+
+/* ---- the climb: the one big animation ---- */
+.plot { --plot-h: clamp(260px, 42vw, 380px); position: relative; padding-left: 36px; }
+.ticks { position: absolute; left: 0; right: 0; top: 0; height: var(--plot-h); pointer-events: none; }
+.tick { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); line-height: 1; }
+.tick span { position: absolute; top: -12px; left: 0; width: 28px; text-align: right; }
+.cols { position: relative; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 0; height: var(--plot-h); }
+.col { position: relative; height: 100%; }
+.track { position: absolute; left: 14%; right: 14%; top: 0; bottom: 0; }
+.fill, .over, .stat { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px 4px 0 0; transform-origin: bottom; }
+.fill { height: calc(var(--total) * 1%); background: var(--score); z-index: 3; }
+/* what the gate took away: kept as a dashed outline so the loss stays visible */
+.over { bottom: calc(var(--total) * 1% + 14px); height: calc(var(--over) * 1%); border: 2px dashed var(--viol); border-bottom: 0; background: transparent; z-index: 2; }
+.over b { position: absolute; left: -10px; right: -10px; bottom: 100%; margin-bottom: 3px; text-align: center; font-size: 13px; color: var(--bad); white-space: nowrap; }
+.stat { height: calc(var(--static) * 1%); border: 2px dashed var(--muted); border-bottom: 0; background: repeating-linear-gradient(135deg, transparent 0 6px, var(--gap) 6px 8px); }
+.nolevel { position: absolute; left: 14%; right: 14%; bottom: 0; height: 56px; border: 2px dotted var(--line); border-radius: 4px 4px 0 0; }
+/* the safety threshold: a hazard-striped ceiling at the cap */
+.slab { position: absolute; left: 0; right: 0; bottom: calc(var(--cap) * 1%); height: 14px; z-index: 1;
+  background: repeating-linear-gradient(-45deg, var(--gate) 0 9px, var(--stripe-ink) 9px 18px); }
+.hit { position: absolute; left: 0; right: 0; bottom: calc(var(--cap) * 1%); height: 14px; z-index: 6; background: #fff; opacity: 0; pointer-events: none; }
+.col.broke .fill { z-index: 4; box-shadow: 0 0 0 3px var(--bg); }
+.slab-label { position: absolute; left: 0; bottom: calc(var(--cap) * 1% - 3px); z-index: 5; font-size: 12px; font-weight: 800; line-height: 20px; background: var(--gate); color: #1a1200; padding: 0 7px; border-radius: 2px; }
+.captions { display: grid; grid-template-columns: repeat(var(--n), 1fr); padding-left: 36px; margin-top: 10px; }
+.cap { padding: 0 6px; text-align: center; }
+.cap .lv { font-weight: 700; font-size: 14px; }
+.cap .num-big { display: block; font-size: clamp(34px, 7vw, 60px); line-height: 1; margin: 2px 0 4px; }
+.cap .sub, .cap .tag { display: block; }
+.cap .none { color: var(--muted); }
+.cap .drift { color: var(--muted); font-weight: 400; }
+.cap .sub { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.cap .tag { font-size: 12px; font-weight: 700; margin-top: 4px; }
+.cap.capped .num-big { color: var(--bad); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 18px 0 0 36px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.legend .k-fill { background: var(--score); border-radius: 2px; }
+.legend .k-over { border: 2px dashed var(--viol); border-bottom: 0; height: 10px; }
+.legend .k-slab { background: repeating-linear-gradient(-45deg, var(--gate) 0 4px, var(--stripe-ink) 4px 8px); }
+button.replay { font: inherit; font-size: 13px; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 12px; cursor: pointer; margin-left: auto; }
+button.replay:hover { background: var(--gap); }
+
+/* animation runs only when the script arms it; without it, or with reduced
+   motion, the page simply shows the end state */
+.climb.armed .fill { animation: rise var(--fill) var(--ease) var(--t0) both; }
+.climb.armed .stat { animation: rise .6s ease-out var(--t0) both; }
+.climb.armed .over { animation: rise var(--ov) linear calc(var(--t0) + var(--os)) both; }
+.climb.armed .over b { animation: fade .3s ease-out calc(var(--t0) + var(--span) + .1s) both; }
+.climb.armed .col.capped .hit { animation: flash .5s ease-out calc(var(--t0) + var(--span)) both; }
+.climb.armed .col.broke .hit { animation: burst .7s ease-out calc(var(--t0) + var(--cross)) both; }
+.climb.armed .cap { animation: fade .4s ease-out var(--t0) both; }
+.climb.armed .cap .tag { animation: fade .4s ease-out calc(var(--t0) + var(--span) + .3s) both; }
+.climb.armed .cap.capped .num-big { animation: thud .5s ease-out calc(var(--t0) + var(--span)) both; }
+@keyframes rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flash { 0% { opacity: 0; } 15% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes burst { 0% { opacity: 0; box-shadow: 0 0 0 0 var(--gate); } 20% { opacity: .55; } 100% { opacity: 0; box-shadow: 0 0 0 26px transparent; } }
+@keyframes thud { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* ---- act two: the same task, two outcomes ---- */
+.ask { font-size: 18px; margin: 8px 0 16px; max-width: 36em; }
+.ask q { quotes: "「" "」"; font-weight: 600; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.tabs button { font: inherit; font-size: 13px; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 3px 12px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.duel { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 3px solid var(--fg); }
+.side { padding: 14px 18px 18px 0; }
+.side + .side { padding: 14px 0 18px 18px; border-left: 1px solid var(--line); }
+.side h3 { margin: 0 0 2px; font-size: 18px; }
+.calls { list-style: none; margin: 12px 0; padding: 0; font-size: 13px; }
+.calls li { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; padding: 5px 8px; border-left: 4px solid transparent; word-break: break-all; }
+.calls .m { font-weight: 700; }
+.calls .st { color: var(--muted); font-variant-numeric: tabular-nums; }
+.calls li.danger { border-left-color: var(--viol); background: color-mix(in srgb, var(--viol) 12%, transparent); }
+.calls li.write { border-left-color: var(--gate); }
+.calls li.more { color: var(--muted); grid-template-columns: 1fr; }
+.calls .why { grid-column: 2 / 4; font-weight: 600; color: var(--bad); }
+.calls li.write .why { color: var(--fg); }
+.verdict { font-weight: 700; font-size: 15px; margin: 8px 0 0; }
+.verdict.bad::before { content: "✕ "; }
+.verdict.good::before { content: "✓ "; }
+.trap[hidden] { display: none; }
+.act.armed .calls li { animation: line .35s ease-out both; animation-delay: calc(var(--i) * .22s + .2s); }
+.act.armed .verdict { animation: fade .4s ease-out both; animation-delay: calc(var(--n) * .22s + .5s); }
+@keyframes line { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 680px) {
+  .plot { padding-left: 28px; } .captions, .legend { padding-left: 28px; margin-left: 0; }
+  .slab-label { font-size: 11px; padding: 0 4px; }
+  .duel { grid-template-columns: 1fr; }
+  .side, .side + .side { padding: 14px 0; border-left: 0; }
+  .side + .side { border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  button.replay { display: none; }
+}
+
+/* ---- the quiet part ---- */
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+summary { cursor: pointer; font-weight: 600; }
+pre { white-space: pre-wrap; background: var(--gap); padding: 10px; border-radius: 4px; font-size: 13px; }
+ul { padding-left: 20px; }
+
+/* ---- lodog report: forest green, mint scores, pink for what was voided ---- */
+:root { color-scheme: light; --bg: #f3f6f5; --panel: #fff; --fg: #172e29; --muted: #5b6e68; --line: #cedbd5; --gap: #e2eae6;
+  --score: #126747; --good: #126747; --static: #126747; --dynamic: #0c4a33; --soft: #e7f2ec; --bad: #a23552; --viol: #a23552; --badsoft: #faedf1;
+  --hero: #112f28; --herotext: #f0faf5; --heromuted: #b5c9c0; --mint: #98f0c4; --voided: #f49ab0; --herotrack: #365047;
+  --gate: #f49ab0; --stripe-ink: #112f28; --warn-bg: #faedf1; --warn-fg: #a23552; --mark: #126747; --on-accent: #fff;
+  --ease: cubic-bezier(.2,.7,.25,1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg: #0e1d19; --panel: #162923; --fg: #e3eee8; --muted: #abc0b6; --line: #365047; --gap: #365047;
+  --score: #98f0c4; --good: #98f0c4; --static: #98f0c4; --dynamic: #5fc79d; --soft: #203d31; --bad: #f49ab0; --viol: #f49ab0; --badsoft: #402832;
+  --hero: #0b1714; --stripe-ink: #0e1d19; --warn-bg: #402832; --warn-fg: #f49ab0; --mark: #98f0c4; --on-accent: #112f28; } }
+:root[data-theme="dark"] { color-scheme: dark; --bg: #0e1d19; --panel: #162923; --fg: #e3eee8; --muted: #abc0b6; --line: #365047; --gap: #365047;
+  --score: #98f0c4; --good: #98f0c4; --static: #98f0c4; --dynamic: #5fc79d; --soft: #203d31; --bad: #f49ab0; --viol: #f49ab0; --badsoft: #402832;
+  --hero: #0b1714; --stripe-ink: #0e1d19; --warn-bg: #402832; --warn-fg: #f49ab0; --mark: #98f0c4; --on-accent: #112f28; }
+body { font-variant-numeric: tabular-nums; }
+::selection { background: var(--mint); color: #112f28; }
+.num-big { font-family: inherit; font-weight: 750; letter-spacing: -.04em; font-stretch: normal; }
+main { max-width: 1040px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-height: 76px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.brand { font-size: 28px; font-weight: 800; letter-spacing: -1.5px; display: flex; align-items: center; color: var(--fg); text-decoration: none; }
+.brand i { display: inline-block; width: 12px; height: 22px; border: 2px solid var(--mark); border-radius: 8px 8px 2px 2px; margin-right: 10px; transform: rotate(-12deg); }
+.top .for { color: var(--muted); font-size: 13px; }
+.tabs2 { display: flex; gap: 26px; }
+.tabs2 button { font: inherit; font-size: 15px; font-weight: 650; background: none; color: var(--muted); border: 0; border-radius: 0; padding: 12px 0; cursor: pointer; position: relative; transition: color .15s var(--ease); }
+.tabs2 button::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; background: var(--score); transform: scaleX(0); transition: transform .2s var(--ease); }
+.tabs2 button:hover { color: var(--fg); }
+.tabs2 button[aria-selected="true"] { color: var(--score); }
+.tabs2 button[aria-selected="true"]::after { transform: scaleX(1); }
+.js .view[hidden], .js .lv[hidden] { display: none; }
+.enter { animation: enter .2s var(--ease) both; }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* level selector */
+.levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 14px; }
+.lvchip { font: inherit; text-align: left; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 13px 12px; cursor: pointer; transition: background .15s, border-color .15s var(--ease), transform .1s; }
+.lvchip:hover { background: var(--soft); }
+.lvchip:active { transform: scale(.98); }
+.lvchip[aria-selected="true"] { background: var(--soft); border: 2px solid var(--score); padding: 12px 11px; }
+.lvchip .k { display: block; font-size: 12px; font-weight: 700; color: var(--score); }
+.lvchip .n { display: block; font-size: 15px; font-weight: 750; }
+.lvchip .t { display: block; font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 4px; }
+.lvchip.nodata { border-style: dashed; }
+.lvchip .st { display: block; font-size: 13px; font-weight: 700; margin-top: 6px; }
+.quiet { font-size: 12.5px; color: var(--muted); margin: 18px 2px 4px; max-width: 60em; }
+.change { font-size: 13px; color: var(--muted); margin: 10px 0 14px; min-height: 1.5em; }
+
+/* the hero: the one dark surface */
+.hero { background: var(--hero); color: var(--herotext); border-radius: 14px; overflow: hidden; border: 1px solid var(--hero); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero { border-color: var(--line); } }
+:root[data-theme="dark"] .hero { border-color: var(--line); }
+.hero-main { display: grid; grid-template-columns: 1fr 1fr; align-items: center; min-height: 320px; padding: 26px 44px; gap: 28px; }
+.dial { position: relative; width: 100%; max-width: 410px; margin: auto; }
+.dial svg { width: 100%; height: auto; display: block; overflow: visible; }
+.dial path { fill: none; stroke-width: 17; stroke-linecap: butt; }
+.dial .track { stroke: var(--herotrack); }
+.dial .lostarc { stroke: var(--voided); }
+.dial .fillarc { stroke: var(--mint); }
+.dial .captick { stroke: var(--herotext); stroke-width: 3; }
+.dial .caplabel { font-size: 12px; font-weight: 700; fill: var(--heromuted); }
+.dial .center { position: absolute; left: 0; right: 0; top: 40%; text-align: center; }
+.dial .big { font-size: 88px; line-height: 1; display: block; transition: color .2s; }
+.dial .big.capped { color: var(--voided); }
+.dial .big.none { color: var(--herotext); }
+.dial .of { font-size: 13px; color: var(--heromuted); margin-top: 6px; display: block; }
+.dial .ends { position: absolute; bottom: 0; left: 9%; right: 8%; display: flex; justify-content: space-between; font-size: 12px; color: var(--heromuted); }
+.badge2 .pill { display: inline-flex; font-size: 14px; font-weight: 650; border: 1px solid #5f8273; border-radius: 5px; padding: 3px 10px; color: var(--mint); margin-bottom: 14px; }
+.badge2 .pname { display: block; font-size: 28px; line-height: 1.3; font-weight: 750; letter-spacing: -.03em; }
+.badge2 .pnote { display: block; font-size: 15px; color: var(--heromuted); margin-top: 8px; max-width: 24em; }
+.capline { margin-top: 18px; display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 22px; }
+.capline .dot { width: 10px; height: 10px; background: var(--voided); display: inline-block; flex: none; }
+.capline.ok { color: var(--mint); }
+.hero-foot { padding: 13px 30px; border-top: 1px solid var(--herotrack); display: flex; justify-content: space-between; gap: 15px; font-size: 13px; color: var(--heromuted); flex-wrap: wrap; }
+.hero-foot strong { color: #fff; font-weight: 650; }
+
+/* rings */
+.rings { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; padding: 26px 0 22px; border-bottom: 1px solid var(--line); }
+.ring { text-align: center; min-width: 0; }
+.ring .rwrap { width: 86px; height: 86px; position: relative; margin: 0 auto 8px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 5; stroke: var(--gap); }
+.ring .rprog { stroke: var(--score); stroke-linecap: butt; }
+.ring.t-bad .rprog { stroke: var(--bad); } .ring.t-mid .rprog { stroke: var(--muted); }
+.ring b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; }
+.ring.t-bad b { color: var(--bad); } .ring.none b { color: var(--muted); }
+.ring.none circle { stroke-dasharray: 2 3; }
+.ring h3 { font-size: 14px; margin: 0; }
+.enter .rprog { animation: ringgrow .36s var(--ease) both; }
+@keyframes ringgrow { from { stroke-dasharray: 0 100; } }
+
+/* buttons */
+.cta { display: flex; justify-content: center; padding: 22px 0 8px; }
+.btn { font: inherit; font-size: 15px; font-weight: 650; background: var(--score); color: var(--on-accent); border: 1px solid var(--score); border-radius: 8px; padding: 11px 24px; cursor: pointer; transition: transform .1s, filter .15s, background .15s; }
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: scale(.97); }
+.btn .count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 8px; border-radius: 999px; background: rgba(255,255,255,.22); font-size: 13px; }
+.btn.ghost { background: var(--panel); color: var(--fg); border-color: var(--line); font-size: 13px; padding: 6px 12px; }
+.btn.ghost:hover { background: var(--soft); filter: none; }
+.btn.small { font-size: 13px; padding: 6px 12px; }
+.btn.done { background: var(--score); color: var(--on-accent); border-color: var(--score); }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--score); outline-offset: 3px; }
+
+/* accordions: checks, folds, tables */
+.acc-h { font: inherit; width: 100%; display: flex; align-items: center; gap: 12px; background: transparent; color: var(--fg); border: 0; cursor: pointer; text-align: left; padding: 15px 5px; transition: background .15s; }
+.acc-h:hover { background: var(--soft); }
+.acc-h:active { background: var(--gap); }
+.acc-h .chev { margin-left: auto; width: 8px; height: 8px; flex: none; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .2s var(--ease); }
+.acc-h[aria-expanded="true"] .chev { transform: rotate(-135deg); }
+.acc-b { display: grid; grid-template-rows: 1fr; }
+.acc-in { overflow: hidden; min-height: 0; }
+.js .acc-b { grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows .22s var(--ease), opacity .2s var(--ease), visibility 0s .22s; }
+.js .acc-b.open { grid-template-rows: 1fr; opacity: 1; visibility: visible; transition: grid-template-rows .22s var(--ease), opacity .2s var(--ease), visibility 0s; }
+
+/* categories and checks: flat rows, like a ledger */
+.cat { display: flex; justify-content: space-between; align-items: baseline; margin: 34px 0 4px; font-size: 22px; letter-spacing: -.02em; border: 0; padding: 0; }
+.cat .cx { font-size: 15px; font-weight: 650; color: var(--muted); }
+.cat .cx.good { color: var(--score); } .cat .cx.bad { color: var(--bad); }
+.checks { border-bottom: 1px solid var(--line); }
+.chk { border-top: 1px solid var(--line); }
+.chk .acc-h { font-size: 15px; font-weight: 500; padding: 15px 5px; }
+.chk .ttl { min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.chk .tag { font-size: 12px; font-weight: 700; color: var(--score); background: var(--soft); padding: 2px 8px; white-space: nowrap; }
+.chk .chev { margin-left: 0; }
+.ico { font-size: 20px; font-weight: 750; width: 22px; text-align: center; flex: none; background: none; }
+.ico.ok { color: var(--score); } .ico.no { color: var(--bad); } .ico.na { color: var(--muted); }
+.chk.new.flash { animation: newpass .9s var(--ease); }
+@keyframes newpass { 0% { background: var(--soft); } 100% { background: transparent; } }
+.cb { padding: 0 35px 22px; }
+.cb h4 { margin: 16px 0 4px; font-size: 13px; }
+.cb p { margin: 0; font-size: 14px; }
+.cb .issue { color: var(--bad); }
+.cb .how.lodog { color: var(--score); font-weight: 650; }
+.cb code { font-size: 12px; }
+.cb .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.audit { margin: 12px 0 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.audit .acc-h { font-size: 13px; font-weight: 650; padding: 9px 12px; }
+.audit .acc-in > div { padding: 0 12px 12px; }
+.example { border-top: 1px solid var(--line); margin: 0; }
+.example .acc-h { font-size: 14px; font-weight: 650; }
+.example .acc-in > div { padding: 0 5px 16px; }
+.sidepair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ask { font-weight: 650; margin: 0 0 8px; font-size: 14px; }
+.cside.after { border-left-color: var(--score); }
+.cside .badge.good { color: var(--score); }
+
+/* dialog */
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--fg); max-width: 820px; width: calc(100% - 28px); max-height: 88vh; padding: 0; }
+dialog[open] { animation: dlgin .2s var(--ease); }
+dialog[open]::backdrop { background: #091e28a8; animation: fadein .2s var(--ease); }
+dialog.closing { animation: dlgout .15s ease-in forwards; }
+dialog.closing::backdrop { animation: fadeout .15s ease-in forwards; }
+@keyframes dlgin { from { opacity: 0; transform: scale(.96) translateY(6px); } }
+@keyframes dlgout { to { opacity: 0; transform: scale(.97); } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes fadeout { to { opacity: 0; } }
+dialog .dh { padding: 22px 28px 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--line); }
+dialog .dh h2 { margin: 0; border: 0; padding: 0; font-size: 24px; }
+dialog .dh button { font-size: 13px; }
+dialog .db { padding: 20px 28px 6px; max-height: 58vh; overflow: auto; }
+dialog .df { padding: 14px 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; position: sticky; bottom: 0; background: var(--panel); }
+.path { background: var(--soft); padding: 18px 20px; border-radius: 10px; margin-bottom: 22px; }
+.path h3 { margin: 0 0 10px; font-size: 16px; }
+.iitem { margin: 8px 0 14px; }
+.iitem pre { margin: 3px 0; }
+.iitem b { font-size: 12.5px; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--panel); padding: 10px 22px; border-radius: 8px; z-index: 5; font-size: 14px; }
+
+/* folds and the guide table */
+.folds { margin-top: 36px; border-top: 1px solid var(--line); }
+.fold { border-bottom: 1px solid var(--line); }
+.fold > .acc-h { font-size: 17px; font-weight: 650; padding: 20px 5px; }
+.fold-body { padding: 0 5px 24px; overflow-x: auto; }
+.fold-body h3 { margin: 20px 0 8px; }
+.fold-body h2 { font-size: 18px; }
+.guide { width: 100%; font-size: 13px; border-collapse: collapse; }
+.guide th, .guide td { padding: 11px 8px; border: 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; background: transparent; }
+.guide thead th { color: var(--muted); font-weight: 600; }
+.guide code { font-size: 12px; }
+.sub2 { font-size: 22px; letter-spacing: -.02em; margin: 40px 0 10px; padding: 0; border: 0; }
+@media (max-width: 680px) {
+  .hero-main { grid-template-columns: 1fr; padding: 22px 22px; gap: 14px; }
+  .dial .big { font-size: 72px; }
+  .hero-foot { display: block; } .hero-foot span { display: block; margin: 3px 0; }
+  .rings { grid-template-columns: repeat(3, 1fr); row-gap: 20px; }
+  .levels { grid-template-columns: 1fr 1fr; }
+  .sidepair { grid-template-columns: 1fr; }
+  .cb { padding: 0 5px 20px; }
+  .guide { font-size: 12px; } .guide th, .guide td { padding: 9px 4px; }
+  dialog .dh, dialog .db, dialog .df { padding-left: 20px; padding-right: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+.cside { border-left: 3px solid var(--line); padding-left: 16px; min-width: 0; }
+.cside.after { border-left-color: var(--score); }
+.cside .who { font-size: 13px; color: var(--muted); }
+.cside .who b { font-size: 11px; font-weight: 400; border: 1px solid var(--line); padding: 0 4px; margin-left: 4px; border-radius: 2px; }
+.cside .badge { display: block; font-weight: 700; font-size: 16px; margin: 2px 0; }
+.cside .badge.good { color: var(--good); }
+.cside .badge.bad { color: var(--bad); }
+.cside .quote { font-size: 13px; color: var(--muted); margin: 4px 0 0; overflow-wrap: anywhere; }
+.cside code { font-size: 12.5px; overflow-wrap: anywhere; }
+.csum { grid-column: 2 / 4; font-size: 14px; margin: 10px 0 0; color: var(--muted); }
+.csum a { color: var(--fg); }
+.foot { margin-top: 40px; }
+
+.topright { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.lang button { font: inherit; font-size: 13px; font-weight: 650; background: transparent; color: var(--muted); border: 0; padding: 5px 11px; cursor: pointer; transition: background .15s, color .15s; }
+.lang button:hover { background: var(--soft); }
+.lang button[aria-pressed="true"] { background: var(--score); color: var(--on-accent); }
+main { transition: opacity .12s ease-in; }
+main.langout { opacity: 0; }
+main.langin { animation: langin .16s var(--ease); }
+@keyframes langin { from { opacity: 0; transform: translateY(4px); } }
+.guide-act { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.guide td { font-size: 14px; }
+.tech summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+.tech p { font-size: 12.5px; margin: 6px 0 0; max-width: 34em; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="top">
+  <a class="brand" href="#" aria-label="lodog"><i aria-hidden="true"></i>lodog</a>
+  <span class="for">{{.Case}}　{{.GeneratedAt.Format "2006-01-02 15:04"}}</span>
+  <div class="topright">
+  <nav class="tabs2" role="tablist" {{ma "aria-label" "tabs.label"}}>
+    <button type="button" role="tab" id="tab-now" aria-controls="view-now" aria-selected="true">{{m "tabs.now"}}</button>
+    {{if .Story.Dash.HasAfter}}<button type="button" role="tab" id="tab-after" aria-controls="view-after" aria-selected="false" tabindex="-1">{{m "tabs.after"}}</button>{{end}}
+  </nav>
+  <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="zh" aria-pressed="true">中</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
+  </div>
+</header>
+{{if not .HasBench}}{{else if not .HasRuns}}<div class="banner" id="static-only"><strong>{{m "banner.static.h"}}</strong> {{m "banner.static.b" .RunsDir}}</div>
+{{end}}
+{{with $.ChainGaps}}
+<div class="banner" id="chain-gap"><strong>{{m "banner.chain.h"}}</strong> {{m "banner.chain.b" (list .)}}</div>
+{{end}}
+
+<section class="view" id="view-now" role="tabpanel" aria-labelledby="tab-now">
+  {{with .Story.Dash.Base}}{{template "dialblock" dict "ID" "dial-now" "V" . "Cap" $.Story.Climb.Cap}}{{template "lvbody" dict "V" . "Prefix" "now"}}{{end}}
+  <div class="cta"><button type="button" class="btn" data-open="improve">{{m "improve.btn"}}{{if .Story.Dash.Improve.Items}}<span class="count">{{len .Story.Dash.Improve.Items}}</span>{{end}}</button></div>
+  {{if not .Story.Dash.HasAfter}}<p class="none" id="no-replay">{{mm .Story.NoReplay}}</p>{{end}}
+</section>
+
+{{if .Story.Dash.HasAfter}}
+<section class="view" id="view-after" role="tabpanel" aria-labelledby="tab-after" hidden>
+  <div class="levels" role="tablist" {{ma "aria-label" "levels.label"}}>
+  {{range .Story.Dash.Levels}}<button type="button" role="tab" class="lvchip{{if and $.HasRuns (not .Gauge.Measured)}} nodata{{end}}" id="chip-{{.Key}}" aria-controls="lv-after-{{.Key}}" aria-selected="{{if eq .Key $.Story.Dash.Default}}true{{else}}false{{end}}" tabindex="{{if eq .Key $.Story.Dash.Default}}0{{else}}-1{{end}}" data-key="{{.Key}}"><span class="k">{{.Key}}</span><span class="n">{{lvl .Key}}</span><span class="t">{{m (print "tag." .Key)}}</span>{{if not .Gauge.Measured}}<span class="st">{{m "chip.static" (pt1 .Gauge.Static)}}</span>{{end}}</button>{{end}}
+  </div>
+  {{range .Story.Dash.Levels}}{{if eq .Key $.Story.Dash.Default}}{{template "dialblock" dict "ID" "dial-after" "V" . "Cap" $.Story.Climb.Cap}}{{end}}{{end}}
+  {{range .Story.Dash.Levels}}<div class="lv" id="lv-after-{{.Key}}" role="tabpanel" aria-labelledby="chip-{{.Key}}"{{if ne .Key $.Story.Dash.Default}} hidden{{end}}>
+    <p class="change">{{mm .Change}}</p>
+    {{template "lvbody" dict "V" . "Prefix" "after"}}
+  </div>{{end}}
+  <div class="fold" id="guide"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-guide" style="font-weight:600"><span>{{m "guide.title"}}</span><span class="chev"></span></button><div class="acc-b" id="b-guide"><div class="acc-in"><div class="fold-body">
+    <table class="guide"><thead><tr><th>{{m "guide.level"}}</th><th>{{m "guide.agent"}}</th><th>{{m "guide.you"}}</th></tr></thead><tbody>
+    {{range .Story.Dash.Guide}}<tr><th scope="row">{{.Level}}<br><span class="muted">{{lvl .Level}}</span></th><td>{{mm .Gets}}</td><td>{{mm .Do}}
+      <div class="guide-act"><button type="button" class="btn ghost" data-copy="{{.Prompt.Zh}}" data-copy-en="{{.Prompt.En}}">{{if eq .Level "L4"}}Copy prompt{{else}}{{m "guide.hand"}}{{end}}</button>
+      <details class="tech"><summary>{{m "guide.tech"}}</summary><p>{{mm .Tech}}</p></details></div></td></tr>{{end}}
+    </tbody></table></div></div></div></div>
+<section class="act" id="replay" aria-labelledby="replay-h">
+<h2 class="sub2" id="replay-h">{{m "replay.title"}}</h2>
+{{if .Story.Replays}}
+{{if gt (len .Story.Replays) 1}}<div class="tabs" role="tablist" {{ma "aria-label" "replay.pick"}}>
+{{range $i, $r := .Story.Replays}}<button type="button" role="tab" id="tab-{{$r.TaskID}}" aria-controls="trap-{{$r.TaskID}}" aria-selected="{{if eq $i 0}}true{{else}}false{{end}}" tabindex="{{if eq $i 0}}0{{else}}-1{{end}}">{{$r.TaskID}}</button>{{end}}
+</div>{{end}}
+{{range $i, $r := .Story.Replays}}
+<article class="trap" id="trap-{{$r.TaskID}}" role="tabpanel" aria-label="{{$r.TaskID}}"{{if $i}} hidden{{end}}>
+<p class="ask">{{m "replay.ask" $r.TaskID $r.Prompt}}</p>
+<div class="duel">
+  {{template "side" dict "S" $r.Open "Open" true}}
+  {{template "side" dict "S" $r.Guarded "Open" false}}
+</div>
+</article>
+{{end}}
+{{else}}
+<p class="none" id="no-replay">{{mm .Story.NoReplay}}</p>
+{{end}}
+</section>
+  <div class="cta"><button type="button" class="btn" data-open="improve">{{m "improve.more"}}{{if .Story.Dash.Improve.Items}}<span class="count">{{len .Story.Dash.Improve.Items}}</span>{{end}}</button></div>
+</section>
+{{end}}
+
+{{if not .HasBench}}<p class="quiet" id="static-only"><strong id="no-bench">{{m "banner.nobench.h"}}</strong> {{m "banner.nobench.b"}}</p>{{end}}
+<div class="folds">
+<div class="fold" id="levels"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-levels"><span>{{m "fold.scores"}}</span><span class="chev"></span></button><div class="acc-b" id="b-levels"><div class="acc-in"><div class="fold-body">
+{{with .Story.Climb}}<section class="climb" id="climb">
+<div class="plot" style="--cap: {{pts .Cap}}; --n: {{len .Stages}}" role="group" {{ma "aria-label" "climb.aria" (pts .Cap)}}>
+  <div class="ticks" aria-hidden="true">
+    {{range $t := ticks}}<div class="tick" style="bottom: {{$t}}%"><span>{{$t}}</span></div>{{end}}
+  </div>
+  {{if .Cap}}<div class="slab-label">{{m "climb.cap" (pt1 .Cap)}}</div>{{end}}
+  <div class="cols">
+    {{if .Cap}}<div class="slab"></div>{{end}}
+    {{range $s := .Stages}}
+    {{$t := timing $s $.Story.Climb.Cap}}
+    <div class="col {{$s.Kind}}{{if $s.Capped}} capped{{end}}{{if broke $s $.Story.Climb.Cap}} broke{{end}}" style="--total: {{pts $s.Total}}; --over: {{pts $s.Lost}}; --static: {{pts $s.Static}}; --t0: {{pts $t.Start}}s; --fill: {{pts $t.Fill}}s; --ease: {{if $t.Linear}}linear{{else}}cubic-bezier(.2,.7,.25,1){{end}}; --span: {{pts $t.Span}}s; --os: {{pts $t.OverStart}}s; --ov: {{pts $t.OverDur}}s; --cross: {{pts $t.Cross}}s">
+      {{if $.Story.Climb.Cap}}<div class="hit"></div>{{end}}
+      {{if eq $s.Kind "run"}}<div class="track"><div class="fill"></div>{{if $s.Capped}}<div class="over"><b>{{m "hero.lost" (pt1 $s.Lost)}}</b></div>{{end}}</div>
+      {{else if eq $s.Kind "static"}}<div class="track"><div class="stat"></div></div>
+      {{else}}<div class="nolevel"></div>{{end}}
+    </div>
+    {{end}}
+  </div>
+</div>
+<div class="captions" style="--n: {{len .Stages}}">
+  {{range $s := .Stages}}
+  {{$t := timing $s $.Story.Climb.Cap}}
+  <div class="cap{{if $s.Capped}} capped{{end}}" style="--t0: {{pts $t.Start}}s; --span: {{pts $t.Span}}s">
+    <span class="lv">{{$s.Name}}</span>
+    {{if eq $s.Kind "run"}}<span class="num-big" data-from="{{pt1 $s.Before}}" data-to="{{pt1 $s.Total}}" data-span="{{pts $t.Span}}" data-t0="{{pts $t.Start}}" data-linear="{{$t.Linear}}">{{pt1 $s.Total}}</span>
+      {{if $s.Capped}}<span class="sub">{{m "climb.was" (pt1 $s.Before)}}<br>{{if $s.Changed}}{{m "climb.danger.changed" $s.Violations $s.Changed}}{{else}}{{m "climb.danger" $s.Violations}}{{end}}</span>
+      <span class="tag bad">{{m "climb.pressed"}}</span>
+      {{else}}<span class="sub">{{m "climb.clear"}}</span><span class="tag good">{{m "climb.broke"}}</span>{{end}}
+      {{if not $s.Complete}}<span class="tag bad">{{m "climb.incomplete"}}</span>{{end}}
+      {{if $s.Drifted}}<a class="tag drift" href="#not-measured">{{m "climb.drift"}}</a>{{end}}
+      {{if $s.Legacy}}<a class="tag drift" href="#not-measured">{{m "climb.legacy"}}</a>{{end}}
+    {{else if eq $s.Kind "static"}}<span class="num-big">{{pt1 $s.Static}}</span><span class="sub">{{m "climb.staticonly"}}<br>{{m "climb.notrun"}}</span>
+    {{else}}<span class="num-big none">–</span><span class="sub">{{m "climb.noconfig"}}</span>{{end}}
+  </div>
+  {{end}}
+</div>
+<div class="legend">
+  <span><i class="k-fill"></i>{{m "climb.l.total"}}</span>
+  <span><i class="k-over"></i>{{m "climb.l.voided"}}</span>
+  <span><i class="k-slab"></i>{{m "climb.l.cap"}}</span>
+  <button type="button" class="replay" id="replay-climb">{{m "climb.replay"}}</button>
+</div>
+</section>{{end}}
+
+<div class="scroll">
+<table id="points">
+<thead><tr><th>{{m "pt.part"}}</th>{{range .Levels}}<th>{{.Name}}</th>{{end}}</tr></thead>
+<tbody>
+<tr><td>{{m "pt.config"}}</td>{{range .Levels}}<td class="muted">{{.Config}}</td>{{end}}</tr>
+<tr><td>{{m "pt.tools"}}</td>{{range .Levels}}<td class="num">{{.Static.Tools}}</td>{{end}}</tr>
+<tr><td>{{m "pt.static"}}</td>{{range .Levels}}<td class="num">{{pts .Static.Points}}</td>{{end}}</tr>
+<tr><td>{{m "pt.correct"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{pts .Run.Score.Points.Correctness}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><td>{{m "pt.honest"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{pts .Run.Score.Points.Honesty}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><td>{{m "pt.safe"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{pts .Run.Score.Points.Safety}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><td>{{m "pt.efficient"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{pts .Run.Score.Points.Efficiency}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><td>{{m "pt.before"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{pts .Run.Score.Points.BeforeGate}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><th>{{m "pt.total"}}</th>{{range .Levels}}<th class="num">{{if .Run}}{{pts .Run.Score.Points.Total}}{{if not .Run.Score.Complete}} <span class="bad">{{m "pt.incomplete"}}</span>{{end}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</th>{{end}}</tr>
+<tr><td>{{m "pt.versions"}}</td>{{range .Levels}}<td class="muted">{{if .Run}}{{range .Run.Score.Versions}}{{.Name}}: {{if .Match}}{{.Observed}}{{else}}<span class="bad">{{m "pt.pinned" .Observed .Expected}}</span>{{end}}<br>{{else}}{{m "pt.notrecorded"}}{{end}}{{else}}{{m "pt.norun"}}{{end}}</td>{{end}}</tr>
+<tr><td>{{m "pt.stability"}}</td>{{range .Levels}}<td class="num">{{if .Run}}{{$s := .Run.Score.Stability}}{{m "pt.consistent" $s.ConsistentTasks $s.TasksRun (pct $s.Consistency)}}<br>{{m "pt.range" (pts $s.CorrectnessLow) (pts $s.CorrectnessHigh)}}{{else}}<span class="none">{{m "ring.none"}}</span>{{end}}</td>{{end}}</tr>
+<tr><td>run</td>{{range .Levels}}<td class="muted">{{if .Run}}{{.Run.ID}}（{{if .Run.Score.MinRunsPerTask}}{{m "pt.runs.adaptive" .Run.Score.MinRunsPerTask .Run.Score.RunsPerTask .Run.Score.TasksRun}}{{else}}{{m "pt.runs" .Run.Score.RunsPerTask .Run.Score.TasksRun}}{{end}}）{{else}}{{m "pt.norun"}}{{end}}</td>{{end}}</tr>
+</tbody>
+</table>
+</div>
+
+</div></div></div></div>
+<div class="fold" id="gate"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-gate"><span>{{m "fold.gate"}}</span><span class="chev"></span></button><div class="acc-b" id="b-gate"><div class="acc-in"><div class="fold-body">
+<p class="muted">{{m "gate.intro"}}</p>
+<div class="scroll">
+<table>
+<thead><tr><th>{{m "gate.level"}}</th><th>{{m "gate.cap"}}</th><th>{{m "gate.calls"}}</th><th>{{m "gate.changed"}}</th><th>{{m "gate.trace"}}</th></tr></thead>
+<tbody>
+{{range .Levels}}
+<tr><td>{{.Name}}</td>
+{{if .Run}}{{$g := .Run.Score.Gate}}
+<td>{{if $g.Triggered}}<span class="bad">{{m "gate.triggered"}}</span> {{m "gate.capis" (pts $g.Cap)}}{{else}}<span class="good">{{m "gate.clear"}}</span>{{end}}</td>
+<td>{{range $g.Violations}}{{m "gate.violation" .TaskID .Attempt .Method .Path}}<br>{{else}}{{m "gate.none"}}{{end}}</td>
+<td>{{range $g.StateChanged}}{{.}}<br>{{else}}{{m "gate.none"}}{{end}}</td>
+<td class="num">{{pct .Run.Score.Traceability.Share}}%（{{.Run.Score.Traceability.Traceable}}/{{.Run.Score.Traceability.Calls}}）</td>
+{{else}}<td colspan="4"><span class="none">{{m "gate.norun"}}</span></td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+
+</div></div></div></div>
+<div class="fold" id="by-type"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-by-type"><span>{{m "fold.bytype"}}</span><span class="chev"></span></button><div class="acc-b" id="b-by-type"><div class="acc-in"><div class="fold-body">
+{{if .RunLevels}}
+<p class="muted">{{m "bytype.intro"}}</p>
+<div class="scroll">
+<table>
+<thead><tr><th>{{m "bytype.type"}}</th>{{range .RunLevels}}<th>{{.Name}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .ByType}}{{$cat := .Category}}
+<tr><td>{{.Type}}</td>
+{{range .Cells}}<td class="num">{{if and . .TasksRun}}{{m "bytype.ran" .TasksRun .Tasks}}<br>
+{{if eq (print $cat) "answer"}}{{m "bytype.correct" (pct .Correctness)}}{{else if eq (print $cat) "honesty"}}{{m "bytype.honest" (pct .Honesty)}}{{else}}{{m "bytype.safe" .SafeTasks .TasksRun}}{{end}} · {{m "bytype.efficient" (pct .Efficiency)}}
+{{else if and . .Tasks}}<span class="none">{{m "bytype.notrun" .Tasks}}</span>{{else}}<span class="none">{{m "bytype.nosuch"}}</span>{{end}}</td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<p class="none" id="by-type-missing">{{m "bytype.missing"}}</p>
+{{end}}
+
+</div></div></div></div>
+<div class="fold" id="stability"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-stability"><span>{{m "fold.stability"}}</span><span class="chev"></span></button><div class="acc-b" id="b-stability"><div class="acc-in"><div class="fold-body">
+{{if .RunLevels}}
+<p class="muted">{{m "stab.intro"}}</p>
+<div class="scroll">
+<table>
+<thead><tr><th>{{m "stab.task"}}</th>{{range .RunLevels}}<th>{{.Name}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .TaskRows}}
+<tr><td>{{.ID}} <span class="muted">{{.Type}}</span></td>
+{{range .Cells}}<td class="num">{{if and . .AttemptsRun}}{{if eq .AgreeingAttempts .AttemptsRun}}{{.AgreeingAttempts}}/{{.AttemptsRun}}{{else}}<span class="bad">{{.AgreeingAttempts}}/{{.AttemptsRun}}</span>{{end}}{{else}}<span class="none">{{m "stab.notrun"}}</span>{{end}}</td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<p class="none" id="stability-missing">{{m "stab.missing"}}</p>
+{{end}}
+
+</div></div></div></div>
+<div class="fold" id="static"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-static"><span>{{m "fold.static"}}</span><span class="chev"></span></button><div class="acc-b" id="b-static"><div class="acc-in"><div class="fold-body">
+<div class="scroll">
+<table>
+<thead><tr><th>{{m "static.item"}}</th>{{range .Levels}}<th>{{.Name}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Checks}}
+<tr><td>{{mm .Label}}（{{pts .Max}}）</td>{{range .Cells}}<td><span class="num">{{pts .Points}}</span><br><span class="muted">{{.Detail}}</span></td>{{end}}</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{range .Levels}}{{range .Static.Notes}}<p class="muted">{{m "static.note"}} {{.}}</p>{{end}}{{end}}
+
+</div></div></div></div>
+<div class="fold" id="l4"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-l4"><span>{{m "fold.l4"}}</span><span class="chev"></span></button><div class="acc-b" id="b-l4"><div class="acc-in"><div class="fold-body">
+{{with .L4}}
+<p>{{if .Gain}}{{m "l4.intro.gain" $.L4Level (pts .Gain)}}{{else}}{{m "l4.intro.nogain" $.L4Level}}{{end}}</p>
+{{range .CountedItems}}{{template "l4item" .}}{{end}}
+{{with .UncountedItems}}
+<h3 id="l4-uncounted">{{m "l4.uncounted"}}</h3>
+<p class="muted">{{m "l4.uncounted.why"}}</p>
+{{range .}}{{template "l4item" .}}{{end}}
+{{end}}
+<h3>{{m "l4.standards"}}</h3>
+<ul>{{range .Standards}}<li>{{.Name}} <code>{{.Path}}</code>：{{.Status}}，{{.Detail}}</li>{{end}}</ul>
+{{else}}
+<p class="none">{{m "l4.none"}}</p>
+{{end}}
+
+</div></div></div></div>
+<div class="fold" id="not-measured"><button type="button" class="acc-h" aria-expanded="false" aria-controls="b-not-measured"><span>{{m "fold.notmeasured"}}</span><span class="chev"></span></button><div class="acc-b" id="b-not-measured"><div class="acc-in"><div class="fold-body">
+{{if .NotMeasured}}<ul>{{range .NotMeasured}}<li>{{mm .}}</li>{{end}}</ul>{{else}}<p>{{m "nm.all"}}</p>{{end}}
+
+</div></div></div></div>
+</div>
+
+<p class="meta foot">{{m "foot.how" .RunsDir}}{{if ne .Mode "full"}} <strong>{{m "foot.mode" .Mode}}</strong>{{end}}</p>
+
+<dialog id="improve" aria-labelledby="improve-h">
+  <div class="dh"><h2 id="improve-h">{{m "dlg.title"}}</h2><button type="button" data-close {{ma "aria-label" "dlg.close"}}>×</button></div>
+  <div class="db">
+    {{if .Story.Dash.HasAfter}}<div class="path"><h3>{{m "dlg.path1"}}</h3><button type="button" class="btn small" data-goto="after">{{m "dlg.goto"}}</button></div>{{end}}
+    <div class="path" style="border-bottom:0"><h3>{{if .Story.Dash.HasAfter}}{{m "dlg.path2"}}{{else}}{{m "dlg.path2solo"}}{{end}}</h3></div>
+    {{range .Story.Dash.Improve.Items}}<div class="iitem"><b>Goal</b><pre>{{.Goal}}{{if .Counted}} {{m "dlg.gain" (pts .Gain)}}{{end}}</pre><b>Issue</b><pre>{{.Issue}}</pre><b>Fix</b><pre>{{.Fix}}</pre></div>{{else}}<p class="muted">{{m "dlg.none"}}</p>{{end}}
+  </div>
+  <div class="df"><button type="button" class="btn" data-copy-from="improve-text">{{m "copy.all"}}</button><span class="muted">{{m "dlg.count" (len .Story.Dash.Improve.Items)}}</span></div>
+  <textarea id="improve-text" readonly hidden>{{.Story.Dash.Improve.Text}}</textarea>
+</dialog>
+</main>
+<script type="application/json" id="i18n">{{dictJSON}}</script>
+<script type="application/json" id="levels-data">{{levelsJSON .Story.Dash}}</script>
+<script>
+(function () {
+  var root = document.documentElement; root.classList.add("js");
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  function enter(el) { if (reduce || !el) return; el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); }
+
+  // ---- language: both dictionaries are in the page; the choice is kept in localStorage ----
+  var DICT = JSON.parse($("#i18n").textContent), LV = JSON.parse($("#levels-data").textContent), LANG_KEY = "lodog-report-lang";
+  var lang = "zh";
+  function resolve(a) {
+    if (a.charAt(0) === "@") { var t = DICT[lang][a.slice(1)]; if (t !== undefined) return t; }
+    if (a.charAt(0) === "#") { return a.slice(1).split(",").map(resolve).join(DICT[lang].sep); }
+    return a;
+  }
+  // msg: {k, a, r}; a missing key shows the key itself, like the server does
+  function T(msg) {
+    if (!msg) return "";
+    if (!msg.k) return msg.r || "";
+    var tpl = DICT[lang][msg.k]; if (tpl === undefined) return msg.k;
+    (msg.a || []).forEach(function (a, i) { tpl = tpl.split("{" + i + "}").join(resolve(a)); });
+    return tpl;
+  }
+  function setText(el, text) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+    text.split("`").forEach(function (p, i, all) {
+      if (p === "") return;
+      if (i % 2 === 1 && i < all.length - 1) { var c = document.createElement("code"); c.textContent = p; el.appendChild(c); }
+      else { el.appendChild(document.createTextNode(i % 2 === 1 ? "`" + p : p)); }
+    });
+  }
+  function level(k) { return T({ k: "level." + k }); }
+  function applyLang(animate) {
+    var main = $("main");
+    function run() {
+      $$(".i[data-k]").forEach(function (el) { setText(el, T({ k: el.dataset.k, a: el.dataset.a ? JSON.parse(el.dataset.a) : [] })); });
+      $$("[data-ia-aria-label],[data-ia-title]").forEach(function (el) {
+        ["aria-label", "title"].forEach(function (attr) {
+          var k = el.getAttribute("data-ia-" + attr); if (!k) return;
+          var a = el.getAttribute("data-ia-" + attr + "-a");
+          el.setAttribute(attr, T({ k: k, a: a ? JSON.parse(a) : [] }));
+        });
+      });
+      root.lang = lang === "zh" ? "zh-Hant" : "en";
+      document.title = T({ k: "title" });
+      $$("[data-lang]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false"); });
+      // the words the script writes itself
+      Object.keys(dials).forEach(function (id) { var d = dials[id]; if (d.shown) words(d, d.shown); });
+      $$("[data-copied]").forEach(function (b) { b.textContent = b.dataset.label || b.textContent; });
+    }
+    if (animate && !reduce && main) { main.classList.add("langout"); setTimeout(function () { run(); main.classList.remove("langout"); main.classList.add("langin"); setTimeout(function () { main.classList.remove("langin"); }, 160); }, 120); }
+    else { run(); }
+  }
+  function pickLang() {
+    try { var s = localStorage.getItem(LANG_KEY); if (s === "zh" || s === "en") return s; } catch (e) {}
+    return /^zh/i.test(navigator.language || "") ? "zh" : "en";
+  }
+  function setLang(l, animate) {
+    if (l === lang) return;
+    lang = l;
+    try { localStorage.setItem(LANG_KEY, l); } catch (e) {}
+    applyLang(animate);
+  }
+
+  // ---- accordions: one handler for checks, folds, tables ----
+  document.addEventListener("click", function (e) {
+    var h = e.target.closest(".acc-h"); if (!h) return;
+    var body = document.getElementById(h.getAttribute("aria-controls")); if (!body) return;
+    var open = h.getAttribute("aria-expanded") !== "true";
+    h.setAttribute("aria-expanded", open ? "true" : "false"); body.classList.toggle("open", open);
+    if (open && h.closest("#levels,#b-levels")) { var cl = document.getElementById("climb"); if (cl && !reduce) { cl.classList.remove("armed"); void cl.offsetWidth; cl.classList.add("armed"); } }
+  });
+
+  // ---- the dial: a 360ms tween to the chosen level ----
+  function easeOut(k) { return 1 - Math.pow(1 - k, 3); }
+  var dials = {};
+  function dialOf(id) {
+    if (dials[id]) return dials[id];
+    var el = document.getElementById(id); if (!el) return null;
+    var block = document.getElementById(id + "-block"), big = $(".big", el);
+    var d = { el: el, fill: $(".fillarc", el), lost: $(".lostarc", el), big: big, of: $(".of", el), block: block, ends: $(".endmax", el), arc: 0, cur: parseFloat(big.textContent) || 0, raf: 0, shown: null };
+    d.arc = parseFloat(fillArcOf(d.fill)) || 0;
+    dials[id] = d; return d;
+  }
+  function fillArcOf(el) { return (el.getAttribute("stroke-dasharray") || "0").split(" ")[0]; }
+  // arc is the filled share of the dial in percent, num the number written in its centre
+  function paint(d, arc, num, capped, before) {
+    d.fill.setAttribute("stroke-dasharray", arc + " 100"); d.big.textContent = num.toFixed(1); d.big.classList.toggle("capped", !!capped); d.cur = num; d.arc = arc;
+    d.lost.setAttribute("stroke-dasharray", (before || 0) + " 100");
+  }
+  // the words around the dial for a level, in the current language
+  function words(d, data) {
+    var b = d.block, v = LV[data.key];
+    d.shown = data;
+    $(".pill", b).textContent = data.key + " · " + level(data.key); $(".pname", b).textContent = T(v.note); $(".pnote", b).textContent = T(v.sub);
+    var cl = $(".capline", b); cl.className = "capline" + (data.measured && !data.capped ? " ok" : "");
+    cl.innerHTML = data.measured ? (data.capped ? '<i class="dot"></i><span></span>' : "<span></span>") : "";
+    if (cl.lastChild && cl.lastChild.tagName === "SPAN") cl.lastChild.textContent = data.capped ? T(v.lost) : T({ k: "hero.clearline" });
+    $(".formula", b).textContent = T(v.formula); $(".beforetext", b).textContent = T(v.before);
+    d.of.textContent = T({ k: data.measured ? "dial.of" : "dial.of.static" }); d.big.classList.toggle("none", !data.measured);
+    d.el.dataset.scale = data.scale; if (d.ends) d.ends.textContent = data.scale;
+  }
+  function tween(d, from, to, ms, capped, before) {
+    var t0 = performance.now(); cancelAnimationFrame(d.raf);
+    (function f(now) {
+      var k = Math.min(1, (now - t0) / ms), e = easeOut(k);
+      paint(d, from.arc + (to.arc - from.arc) * e, from.num + (to.num - from.num) * e, capped && k >= 1, before);
+      if (k < 1) { d.raf = requestAnimationFrame(f); }
+    })(t0);
+  }
+  // a level shows its total on a 100 scale, or its static score on the 30 scale when it has no run
+  function goTo(d, data, instant) {
+    words(d, data);
+    var num = data.measured ? data.total : data.static, to = { arc: num / data.scale * 100, num: num }, before = data.capped ? data.before : 0;
+    if (instant || reduce) { cancelAnimationFrame(d.raf); paint(d, to.arc, to.num, data.capped, before); return; }
+    tween(d, { arc: d.arc, num: d.cur }, to, 360, data.capped, before);
+  }
+  function levelData(key) { var v = LV[key]; return { key: v.key, measured: v.measured, before: v.beforeNum, total: v.total, static: v.static, scale: v.scale, capped: v.capped }; }
+
+  // ---- the two views ----
+  var tabs = $$('.tabs2 [role="tab"]');
+  function remember(view, key) { try { history.replaceState(null, "", "#view=" + view + (key ? "&level=" + key : "")); } catch (e) {} }
+  function currentLevel() { var c = chips.filter(function (x) { return x.getAttribute("aria-selected") === "true"; })[0]; return c ? c.dataset.key : ""; }
+  function show(name) {
+    remember(name, name === "after" ? currentLevel() : "");
+    tabs.forEach(function (t) {
+      var on = t.id === "tab-" + name; t.setAttribute("aria-selected", on ? "true" : "false"); t.tabIndex = on ? 0 : -1;
+      var v = document.getElementById(t.getAttribute("aria-controls")); if (v) { var was = v.hidden; v.hidden = !on; if (on && was) enter(v); }
+    });
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { show(t.id.replace("tab-", "")); });
+    t.addEventListener("keydown", function (e) {
+      var j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : -1; if (j < 0) return;
+      var n = tabs[(j + tabs.length) % tabs.length]; n.focus(); show(n.id.replace("tab-", "")); e.preventDefault();
+    });
+  });
+
+  // ---- the level selector ----
+  var chips = $$(".lvchip");
+  function select(chip, instant) {
+    remember("after", chip.dataset.key);
+    chips.forEach(function (c) { var on = c === chip; c.setAttribute("aria-selected", on ? "true" : "false"); c.tabIndex = on ? 0 : -1; });
+    $$(".lv").forEach(function (p) { var on = p.id === chip.getAttribute("aria-controls"); var was = p.hidden; p.hidden = !on; if (on && was) { enter(p); $$(".chk.new", p).forEach(function (c) { if (reduce) return; c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash"); }); } });
+    var d = dialOf("dial-after"); if (d) goTo(d, levelData(chip.dataset.key), !!instant);
+  }
+  chips.forEach(function (c, i) {
+    c.addEventListener("click", function () { select(c); });
+    c.addEventListener("keydown", function (e) {
+      var j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : -1; if (j < 0) return;
+      var n = chips[(j + chips.length) % chips.length]; n.focus(); select(n); e.preventDefault();
+    });
+  });
+
+  // ---- dialog and copy ----
+  var dlg = document.getElementById("improve");
+  function closeDlg() { if (reduce) { dlg.close(); return; } dlg.classList.add("closing"); setTimeout(function () { dlg.classList.remove("closing"); dlg.close(); }, 150); }
+  $$("[data-open]").forEach(function (b) { b.addEventListener("click", function () { if (dlg && dlg.showModal) dlg.showModal(); }); });
+  $$("[data-close]").forEach(function (b) { b.addEventListener("click", closeDlg); });
+  if (dlg) { dlg.addEventListener("cancel", function (e) { e.preventDefault(); closeDlg(); }); dlg.addEventListener("click", function (e) { if (e.target === dlg) closeDlg(); }); }
+  $$("[data-goto]").forEach(function (b) { b.addEventListener("click", function () { closeDlg(); show(b.dataset.goto); window.scrollTo(0, 0); }); });
+  function copyText(text, btn) {
+    function done() { var o = btn.dataset.label || btn.textContent; btn.dataset.label = o; btn.textContent = T({ k: "copy.done" }); btn.classList.add("done"); setTimeout(function () { btn.textContent = btn.dataset.label; btn.classList.remove("done"); }, 1500); }
+    function fallback() { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) {} document.body.removeChild(ta); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
+  }
+  $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(lang === "en" && b.dataset.copyEn ? b.dataset.copyEn : b.dataset.copy, b); }); });
+  $$("[data-copy-from]").forEach(function (b) { b.addEventListener("click", function () { copyText(document.getElementById(b.dataset.copyFrom).value, b); }); });
+  $$("[data-lang]").forEach(function (b) { b.addEventListener("click", function () { setLang(b.dataset.lang, true); }); });
+
+  // ---- the replay ----
+  var act = document.getElementById("replay");
+  function playAct() { if (act && !reduce) { act.classList.remove("armed"); void act.offsetWidth; act.classList.add("armed"); } }
+  var rtabs = $$('#replay [role="tab"]');
+  function selectTrap(tab) {
+    rtabs.forEach(function (t) { var on = t === tab; t.setAttribute("aria-selected", on ? "true" : "false"); t.tabIndex = on ? 0 : -1; document.getElementById(t.getAttribute("aria-controls")).hidden = !on; });
+    playAct();
+  }
+  rtabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { selectTrap(t); });
+    t.addEventListener("keydown", function (e) {
+      var j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : -1; if (j < 0) return;
+      var n = rtabs[(j + rtabs.length) % rtabs.length]; n.focus(); selectTrap(n); e.preventDefault();
+    });
+  });
+  var viewAfter = document.getElementById("view-after"); if (viewAfter) viewAfter.hidden = true;
+  if (act && !reduce && "IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { playAct(); } }); }, { rootMargin: "0px 0px -25% 0px" });
+    io.observe(act);
+  }
+  var rb = document.getElementById("replay-climb"); if (rb) rb.addEventListener("click", function () { var cl = document.getElementById("climb"); if (cl) { cl.classList.remove("armed"); void cl.offsetWidth; cl.classList.add("armed"); } });
+
+  // ---- first paint: the language, then the dials ----
+  lang = pickLang();
+  var selected = chips.filter(function (c) { return c.getAttribute("aria-selected") === "true"; })[0];
+  var da = dialOf("dial-after"); if (selected && da) goTo(da, levelData(selected.dataset.key), true);
+  var now = dialOf("dial-now"); if (now) { now.shown = levelData(now.el.dataset.key); }
+  if (lang !== "zh") { applyLang(false); }
+  // a link can carry the view and the level: #view=after&level=L2
+  var want = {}; location.hash.replace(/^#/, "").split("&").forEach(function (p) { var kv = p.split("="); want[kv[0]] = kv[1]; });
+  var wanted = chips.filter(function (c) { return c.dataset.key === want.level; })[0];
+  if (wanted && wanted !== selected) { select(wanted, true); }
+  if (want.view === "after" && tabs.length > 1) { show("after"); }
+  if (now && !reduce) { var nd = levelData(now.el.dataset.key); if (nd.measured) { paint(now, 0, 0, false, 0); goTo(now, nd, false); } }
+})();
+</script>
+</body>
+</html>
+
+{{define "l4item"}}
+<details>
+<summary>{{if .Counted}}+{{pts .Gain}} {{m "l4.pts"}}{{else}}·{{end}}　{{.Name}}（{{.Measured}}）</summary>
+<p>{{.Detail}}</p>
+{{if .Examples}}<ul>{{range .Examples}}<li>{{.}}</li>{{end}}</ul>{{end}}
+<p class="muted">{{m "l4.paste"}}</p>
+<pre>{{.Instruction}}</pre>
+</details>
+{{end}}
+
+{{define "side"}}{{$s := .S}}
+<div class="side {{if .Open}}open{{else}}guarded{{end}}">
+  <h3>{{if .Open}}{{m "replay.open" (la $s.Kind)}}{{else}}{{m "replay.guarded" (la $s.Kind)}}{{end}}</h3>
+  <p class="muted">run {{$s.RunID}}</p>
+  <ol class="calls" style="--n: {{len $s.Calls}}">
+  {{range $i, $c := $s.Calls}}
+    <li style="--i: {{$i}}" class="{{if $c.Danger}}danger{{else if $c.Write}}write{{end}}">
+      <span class="m">{{$c.Method}}</span><span class="p">{{$c.Path}}{{if gt $c.Count 1}} <span class="muted">×{{$c.Count}}</span>{{end}}</span><span class="st">{{if $c.LegacyNoAnswer}}{{m "call.noreply"}}{{else}}{{$c.Status}}{{end}}</span>
+      {{if $c.Danger}}<span class="why">{{m "call.danger"}}</span>{{else if $c.ApprovalID}}<span class="why">{{m "call.approved" $c.ApprovalID}}</span>{{end}}
+    </li>
+  {{end}}
+  {{if $s.Folded}}<li class="more" style="--i: {{len $s.Calls}}">{{m "call.folded" $s.Folded}}</li>{{end}}
+  </ol>
+  {{if .Open}}<p class="verdict bad" style="--n: {{len $s.Calls}}">{{if $s.Changed}}{{m "verdict.open.changed" $s.Danger}}{{else}}{{m "verdict.open" $s.Danger}}{{end}}</p>
+  {{else if $s.Writes}}<p class="verdict good" style="--n: {{len $s.Calls}}">{{m "verdict.guarded.writes"}}</p>
+  {{else}}<p class="verdict good" style="--n: {{len $s.Calls}}">{{m "verdict.guarded.reads" $s.Total}}</p>{{end}}
+</div>
+{{end}}
+
+
+{{define "dialblock"}}{{$v := .V}}{{$g := $v.Gauge}}
+<section class="hero" id="{{.ID}}-block" {{ma "aria-label" "hero.aria"}}>
+<div class="hero-main">
+<div class="dial" id="{{.ID}}" data-key="{{$v.Key}}" data-measured="{{$g.Measured}}" data-scale="{{printf "%.0f" $g.Scale}}" data-before="{{pts $g.Before}}" data-total="{{pts $g.Total}}" data-static="{{pts $g.Static}}" data-capped="{{$g.Capped}}">
+  <svg viewBox="0 0 400 286" role="img" {{if $g.Measured}}{{ma "aria-label" "dial.aria" (pt1 $g.Total)}}{{else}}{{ma "aria-label" "dial.aria.static" (pt1 $g.Static)}}{{end}}>
+    <path class="track" d="{{arc 0 100 158}}"/>
+    <path class="lostarc" d="{{arc 0 100 158}}" pathLength="100" stroke-dasharray="{{if and $g.Measured $g.Capped}}{{pts $g.Before}}{{else}}0{{end}} 100"/>
+    <path class="fillarc" d="{{arc 0 100 158}}" pathLength="100" stroke-dasharray="{{pts $g.ArcPct}} 100"/>
+    {{if and .Cap $g.Measured}}<line class="captick" x1="{{gx .Cap 140}}" y1="{{gy .Cap 140}}" x2="{{gx .Cap 180}}" y2="{{gy .Cap 180}}"/>
+    <text class="caplabel" x="{{gx .Cap 204}}" y="{{gy .Cap 204}}" text-anchor="middle">{{mt "dial.cap" (pt1 .Cap)}}</text>{{end}}
+  </svg>
+  <div class="center"><span class="big num-big {{if not $g.Measured}}none{{else if $g.Capped}}capped{{end}}">{{if $g.Measured}}{{pt1 $g.Total}}{{else}}{{pt1 $g.Static}}{{end}}</span><span class="of">{{if $g.Measured}}{{m "dial.of"}}{{else}}{{m "dial.of.static"}}{{end}}</span></div>
+  <div class="ends"><span>0</span><span class="endmax">{{printf "%.0f" $g.Scale}}</span></div>
+</div>
+<div class="badge2"><span class="pill">{{$v.Key}} · {{lvl $v.Key}}</span><span class="pname">{{mm $v.Note}}</span><span class="pnote">{{mm $v.Sub}}</span>
+  <div class="capline{{if and $g.Measured (not $g.Capped)}} ok{{end}}">{{if and $g.Measured $g.Capped}}<i class="dot"></i><span>{{mm $v.LostText}}</span>{{else if $g.Measured}}<span>{{m "hero.clearline"}}</span>{{end}}</div></div>
+</div>
+<div class="hero-foot"><span class="formula">{{mm $v.Formula}}</span><span class="beforetext">{{mm $v.BeforeText}}</span></div>
+</section>
+{{end}}
+{{define "lvbody"}}{{$v := .V}}
+{{template "rings" $v.Rings}}
+{{with $v.Example}}<div class="example"><button type="button" class="acc-h" aria-expanded="false" aria-controls="ex-{{$.Prefix}}-{{$v.Key}}"><span>{{m "example"}} {{mm .Question}}</span><span class="chev"></span></button><div class="acc-b" id="ex-{{$.Prefix}}-{{$v.Key}}"><div class="acc-in"><div>
+  <p class="ask">{{m "replay.ask" .TaskID .Prompt}}</p><div class="sidepair">{{template "cside" dict "S" .Before "Kind" "before"}}{{template "cside" dict "S" .After "Kind" "after"}}</div>
+  <p class="csum">{{mm .Summary}}</p></div></div></div></div>{{end}}
+{{range $ci, $c := $v.Cats}}
+<h2 class="cat"><span>{{mm $c.Name}}</span><span class="cx {{if not $c.Total}}mid{{else if eq $c.Passed $c.Total}}good{{else if lt (mul $c.Passed 2) $c.Total}}bad{{else}}mid{{end}}">{{$c.Passed}}/{{$c.Total}}</span></h2>
+{{range $c.Checks}}{{template "check" dict "C" . "P" $.Prefix "L" $v.Key}}{{end}}
+{{end}}
+{{end}}
+{{define "rings"}}<div class="rings">{{range .}}<div class="ring {{if .Measured}}t-{{.Tone}}{{else}}none{{end}}" title="{{.Frac.Zh}}"><div class="rwrap"><svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/>{{if .Measured}}<circle class="rprog" cx="40" cy="40" r="34" pathLength="100" stroke-dasharray="{{pts .Pct}} 100"/>{{end}}</svg><b>{{mm .Center}}</b></div><h3>{{mm .Label}}</h3></div>{{end}}</div>{{end}}
+{{define "check"}}{{$c := .C}}{{$id := print .P "-" .L "-" $c.ID}}
+<div class="chk{{if $c.Changed}} new{{end}}"><button type="button" class="acc-h" aria-expanded="false" aria-controls="c-{{$id}}"><span class="ico {{if not $c.Measured}}na{{else if $c.Pass}}ok{{else}}no{{end}}" aria-hidden="true">{{if not $c.Measured}}–{{else if $c.Pass}}✓{{else}}✕{{end}}</span><span class="ttl">{{mm $c.Short}}</span><span class="sr">{{if not $c.Measured}}{{m "check.sr.na"}}{{else if $c.Pass}}{{m "check.sr.pass"}}{{else}}{{m "check.sr.fail"}}{{end}}</span>{{if $c.Changed}}<span class="tag">{{m "check.new"}}</span>{{end}}<span class="chev"></span></button>
+<div class="acc-b" id="c-{{$id}}"><div class="acc-in"><div class="cb">
+  {{if not $c.Measured}}<p class="muted">{{m "check.notrun"}}</p>{{else}}
+  <h4>Goal</h4><p>{{mm $c.Goal}}</p>
+  {{if $c.Issues}}<h4>Issue</h4><p class="issue">{{range $c.Issues}}{{mm .}} {{end}}</p>{{end}}
+  {{if not $c.How.Text.IsZero}}<h4>How to implement</h4><p class="how {{$c.How.Kind}}">{{mm $c.How.Text}}</p>{{end}}
+  <h4>Resources</h4><p><code>{{$c.Resource}}</code></p>
+  {{if or $c.Calls $c.Answer}}<div class="audit"><button type="button" class="acc-h" aria-expanded="false" aria-controls="a-{{$id}}"><span>Audit details</span><span class="chev"></span></button><div class="acc-b" id="a-{{$id}}"><div class="acc-in"><div>
+    {{if $c.Calls}}<ol class="calls" style="--n: 0">{{range $c.Calls}}<li class="{{if .Danger}}danger{{else if .Write}}write{{end}}"><span class="m">{{.Method}}</span><span class="p">{{.Path}}{{if gt .Count 1}} <span class="muted">×{{.Count}}</span>{{end}}</span><span class="st">{{.Status}}</span>{{if .Danger}}<span class="why">{{m "call.danger"}}</span>{{else if .ApprovalID}}<span class="why">{{m "call.approved" .ApprovalID}}</span>{{end}}</li>{{end}}</ol>{{end}}
+    {{if $c.Answer}}<p class="muted" style="margin-top:8px">{{$c.Answer}}</p>{{end}}
+  </div></div></div></div>{{end}}
+  {{if not $c.Pass}}<div class="actions"><button type="button" class="btn ghost" data-copy="{{index $c.Prompt "zh"}}" data-copy-en="{{index $c.Prompt "en"}}">Copy prompt</button></div>{{end}}
+  {{end}}
+</div></div></div></div>{{end}}
+
+{{define "cside"}}{{$s := .S}}
+<div class="cside {{.Kind}}">
+  <span class="who">{{lvl $s.Level}}<b>{{$s.Level}}</b></span>
+  <span class="badge {{$s.Tone}}">{{mm $s.Badge}}</span>
+  {{if not $s.Text.IsZero}}<p class="quote">{{if $s.Code}}<code>{{mm $s.Text}}</code>{{else}}{{mm $s.Text}}{{end}}</p>{{end}}
+</div>
+{{end}}

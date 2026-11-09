@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.1",
+  "info": { "title": "Petshop", "version": "1.0" },
+  "servers": [{ "url": "/api/v3" }],
+  "paths": {
+    "/pet/{petId}": {
+      "get": {
+        "summary": "Find pet by id",
+        "parameters": [{ "name": "petId", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/store/inventory": {
+      "get": { "summary": "Inventory", "responses": { "200": { "description": "ok" } } }
+    },
+    "/pet": {
+      "post": {
+        "summary": "Add a pet",
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "ok" } }
+      }
+    }
+  }
+}

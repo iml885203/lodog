@@ -1,0 +1,28 @@
+# L3: L2's task tools with enforcement on, using the policy `lodog policy draft`
+# produced, as drafted with no human review (docs/policy.md). Its score is lodog's own.
+case: cases/backoffice
+level: L3
+policy: spec/policy.auto.yaml
+listen: 127.0.0.1:7400
+# The recording proxy (lodog bench proxy), which forwards to Backoffice.
+upstream: http://127.0.0.1:7401
+
+auth:
+  type: cookie-session
+  login: POST /api/operator/login
+  username_field: LoginName
+  password_field: Password
+  username_env: LODOG_UPSTREAM_USER
+  password_env: LODOG_UPSTREAM_PASSWORD
+  # Backoffice answers a wrong password with 200 and no cookie.
+  success:
+    cookie_name: .AspNetCore.Session
+
+identity:
+  actor: agent:lodog-bench
+  on_behalf_of: user:alice
+
+# Humans approve held calls here (lodog approvals ...). Not the MCP port: the
+# agent must not be able to reach it.
+approvals:
+  listen: 127.0.0.1:7402

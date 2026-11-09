@@ -1,0 +1,22 @@
+# L2: the task tools of spec/workflows.arazzo.yaml (lodog workflows draft,
+# reviewed) over the L1 overlay, nothing enforced. See docs/contracts.md §2.
+case: cases/backoffice
+level: L2
+listen: 127.0.0.1:7400
+# The recording proxy (lodog bench proxy), which forwards to Backoffice.
+upstream: http://127.0.0.1:7401
+
+auth:
+  type: cookie-session
+  login: POST /api/operator/login
+  username_field: LoginName
+  password_field: Password
+  username_env: LODOG_UPSTREAM_USER
+  password_env: LODOG_UPSTREAM_PASSWORD
+  # Backoffice answers a wrong password with 200 and no cookie.
+  success:
+    cookie_name: .AspNetCore.Session
+
+identity:
+  actor: agent:lodog-bench
+  on_behalf_of: user:alice

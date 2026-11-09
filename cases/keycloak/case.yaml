@@ -1,0 +1,31 @@
+# keycloak: the legacy system lodog serves to agents.
+# Fill in what you know; lodog reads only the fields listed in docs/contracts.md.
+name: keycloak
+description: "Keycloak Admin REST API (users, roles, groups, clients), the backend of an identity admin console"
+
+api:
+  # Where the system runs. Must match `upstream` in gateway/L0.yaml.
+  base_url: http://localhost:8180
+  # Where spec/openapi.json came from, so you can fetch it again.
+  swagger: https://www.keycloak.org/docs-api/26.8.1/rest-api/openapi.json
+  auth:
+    type: bearer
+
+benchmark:
+  tasks: tasks.md
+  answers: expected/answers.yaml
+  # Run before every task attempt, from the folder you run lodog in, to put the
+  # data back into a known state. lodog splits it on spaces and runs it without
+  # a shell: no quotes, pipes or &&. Point it at a script if you need more.
+  # Uncomment and fill in; `lodog bench` refuses to run without it.
+  reset: ./cases/keycloak/reset.sh
+
+# `lodog bench run` refuses to start unless the running Keycloak matches every pin.
+versions:
+  - name: keycloak.image
+    expect: quay.io/keycloak/keycloak:26.8.1
+    observe: cases/keycloak/env/observe.sh image
+  # What the server reports about itself, not what the container was told.
+  - name: keycloak.version
+    expect: 26.8.1
+    observe: cases/keycloak/env/observe.sh version

@@ -1,0 +1,46 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ledger",
+    "version": "1"
+  },
+  "paths": {
+    "/things": {
+      "get": {
+        "summary": "List things",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a thing",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://ledger.example.test/v2"
+    }
+  ],
+  "security": [
+    {
+      "token": []
+    }
+  ]
+}

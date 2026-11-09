@@ -1,0 +1,52 @@
+{{- if eq .Level "L0"}}# L0: every operation in spec/openapi.json served as one MCP tool, as the
+# document describes it. See docs/contracts.md section 2.
+{{- else if eq .Level "L1"}}# L1: the same tools with the descriptions in spec/overlay.yaml. The gateway
+# does not start without that file: write it first with
+#   lodog enrich --case {{.Dir}}
+# and review what it marks needsReview. See docs/contracts.md section 2.
+{{- else if eq .Level "L2"}}# L2: task tools instead of one tool per operation: every workflow in
+# spec/workflows.arazzo.yaml over the L1 overlay, nothing enforced. The gateway
+# does not start without them: write the overlay and the workflows first with
+#   lodog enrich --case {{.Dir}}
+#   lodog workflows draft --case {{.Dir}}
+# See docs/contracts.md section 2.
+{{- else}}# L3: L2's task tools (spec/workflows.arazzo.yaml over spec/overlay.yaml:
+#   lodog enrich --case {{.Dir}}, then lodog workflows draft --case {{.Dir}})
+# with every call decided by spec/policy.yaml: allowed, held for a human's
+# approval, refused or hidden. The gateway does not start without the policy:
+# draft it first with
+#   lodog policy draft {{.Dir}}/spec/openapi.json --case {{.Dir}} --out {{.Dir}}/spec/policy.yaml
+# and review it (docs/policy.md). Held calls are put to you at your MCP client
+# (elicitation) by default; docs/approvals.md has the other ways to approve.
+# See docs/contracts.md section 2.
+{{- end}}
+#
+# Run from the folder that contains {{.Dir}}/, not from inside it:
+#   lodog serve -c {{.Dir}}/gateway/{{.Level}}.yaml
+# Agents connect to http://<listen>/mcp.
+case: {{.Dir}}
+level: {{.Level}}
+listen: 127.0.0.1:7400
+
+# The legacy system itself. Include a base path if the API lives under one
+# (https://host/api/v3), because the paths in the spec are relative to it.
+upstream: {{.Upstream}}
+# true only for a local system with a self-signed certificate (lodog init --insecure writes it).
+upstream_insecure_tls: {{.Insecure}}
+
+# How the gateway signs in. Secrets are never written here: name the
+# environment variable that holds each one. A rejected login is never retried.
+auth:
+{{.AuthBlock}}
+
+# Who every call is attributed to. Change on_behalf_of to the person this
+# gateway acts for.
+identity:
+  actor: agent:lodog
+  on_behalf_of: user:{{.Placeholder}}
+{{- if eq .Level "L3"}}
+
+approvals:
+  listen: 127.0.0.1:7402
+policy: spec/policy.yaml
+{{- end}}

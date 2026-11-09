@@ -1,0 +1,49 @@
+# The risk set `lodog policy draft` gives a drafted policy (docs/policy.md).
+# A system that names or splits its risks differently passes its own file
+# with --risks; this one is the default.
+#
+# Each risk:
+#   name                the system's own name; the policy and the gateway use it
+#   action              allow | approval | deny | hide
+#   never_auto_approve  only a person approves the call, never an automated
+#                       approver such as a benchmark's simulated operator
+#   classes             which of lodog's classes the risk takes: read, write,
+#                       money, irreversible, credential, internal, test. These
+#                       are what the heuristics detect and what an overlay's
+#                       x-agent.risk declares; every class goes to exactly one
+#                       risk, and the read risk takes no other class.
+#   means               what the risk covers, for the model and the reviewer
+#
+# The order is the order a reviewer reads the drafted rules, strictest first.
+# When an operation fits more than one risk, the model chooses the earlier.
+default: write
+risks:
+  - name: irreversible
+    action: approval
+    never_auto_approve: true
+    classes: [irreversible]
+    means: "cannot be undone once it runs: deletes or purges records, pays out or settles money, approves or completes a transaction, sends something outside the system"
+  - name: money
+    action: approval
+    classes: [money]
+    means: "moves money or value: payments, deposits, withdrawals, transfers, credits, refunds, balances"
+  - name: credential
+    action: hide
+    classes: [credential]
+    means: "passwords, OTPs, account unlocks, tokens or keys"
+  - name: write
+    action: approval
+    classes: [write]
+    means: "creates or edits ordinary records in a way a later edit can undo"
+  - name: internal
+    action: hide
+    classes: [internal]
+    means: "a service-to-service endpoint no human operator calls"
+  - name: test
+    action: hide
+    classes: [test]
+    means: "a test or debug endpoint left in the API"
+  - name: read
+    action: allow
+    classes: [read]
+    means: "looks things up"

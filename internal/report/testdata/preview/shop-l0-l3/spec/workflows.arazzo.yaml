@@ -1,0 +1,47 @@
+arazzo: 1.0.1
+info:
+  title: shop task tools
+  version: "1"
+  description: Start with get_player; giving a bonus waits for a human's approval.
+sourceDescriptions:
+  - {name: shop, url: openapi.json, type: openapi}
+workflows:
+  - workflowId: get_player
+    summary: Read one player.
+    inputs:
+      type: object
+      properties:
+        id: {type: integer, description: The player's id.}
+      required: [id]
+    steps:
+      - stepId: read
+        operationPath: '{$sourceDescriptions.shop.url}#/paths/~1players~1{id}/get'
+        parameters:
+          - {name: id, in: path, value: $inputs.id}
+    x-agent: {risk: read, next: [give_bonus]}
+  - workflowId: give_bonus
+    summary: Give a player a bonus.
+    inputs:
+      type: object
+      properties:
+        id: {type: integer, description: The player's id, from get_player.}
+      required: [id]
+    steps:
+      - stepId: give
+        operationPath: '{$sourceDescriptions.shop.url}#/paths/~1players~1{id}~1bonus/post'
+        parameters:
+          - {name: id, in: path, value: $inputs.id}
+    x-agent: {risk: money}
+  - workflowId: reset_password
+    summary: Reset a player's password.
+    inputs:
+      type: object
+      properties:
+        id: {type: integer, description: The player's id.}
+      required: [id]
+    steps:
+      - stepId: reset
+        operationPath: '{$sourceDescriptions.shop.url}#/paths/~1players~1{id}~1resetPassword/get'
+        parameters:
+          - {name: id, in: path, value: $inputs.id}
+    x-agent: {risk: credential}

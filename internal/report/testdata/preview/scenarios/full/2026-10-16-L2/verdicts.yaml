@@ -1,0 +1,4 @@
+- task: T3
+  attempt: 1
+  question: Does the answer say player 9 does not exist?
+  "yes": false

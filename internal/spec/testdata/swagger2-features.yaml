@@ -1,0 +1,80 @@
+swagger: "2.0"
+info:
+  title: Features
+  version: "1"
+host: api.example.com
+basePath: /v1
+schemes: [https]
+consumes: [application/json]
+produces: [application/json]
+securityDefinitions:
+  basic: {type: basic}
+  key: {type: apiKey, name: X-Key, in: header}
+  oauth:
+    type: oauth2
+    flow: accessCode
+    authorizationUrl: https://auth.example.com/authorize
+    tokenUrl: https://auth.example.com/token
+    scopes: {read: read things}
+security:
+  - key: []
+parameters:
+  limit:
+    name: limit
+    in: query
+    type: integer
+    format: int32
+    maximum: 100
+definitions:
+  Pet:
+    type: object
+    required: [name]
+    properties:
+      name: {type: string}
+      nick: {type: string, x-nullable: true}
+      owner: {$ref: "#/definitions/Owner"}
+  Owner:
+    type: object
+    properties:
+      pets:
+        type: array
+        items: {$ref: "#/definitions/Pet"}
+paths:
+  /pets:
+    parameters:
+      - $ref: "#/parameters/limit"
+      - {name: tenant, in: query, type: string}
+    get:
+      parameters:
+        - {name: tenant, in: query, type: string, required: true}
+        - {name: tags, in: query, type: array, items: {type: string}, collectionFormat: multi}
+      responses:
+        200:
+          description: ok
+          schema:
+            type: array
+            items: {$ref: "#/definitions/Pet"}
+    post:
+      consumes: [application/json, application/xml]
+      parameters:
+        - {name: body, in: body, required: true, schema: {$ref: "#/definitions/Pet"}}
+      responses:
+        201: {description: created}
+        default: {description: error}
+  /pets/{id}/photo:
+    post:
+      consumes: [multipart/form-data]
+      parameters:
+        - {name: id, in: path, required: true, type: string}
+        - {name: caption, in: formData, type: string, required: true}
+        - {name: photo, in: formData, type: file}
+      responses:
+        200: {description: ok}
+  /login:
+    post:
+      consumes: [application/x-www-form-urlencoded]
+      security: []
+      parameters:
+        - {name: user, in: formData, type: string, required: true}
+      responses:
+        200: {description: ok}

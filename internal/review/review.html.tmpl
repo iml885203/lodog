@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lodog 審核摘要</title>
+<style>
+:root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dedcd5; --panel: #ffffff; --accent: #3b6ea8; --soft: #f1efe9; --on-accent: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #161615; --fg: #ecebe6; --muted: #a3a29c; --line: #34332f; --panel: #1f1f1d; --accent: #6f9fd6; --soft: #262624; --on-accent: #101010; }
+}
+:root[data-theme="dark"] { --bg: #161615; --fg: #ecebe6; --muted: #a3a29c; --line: #34332f; --panel: #1f1f1d; --accent: #6f9fd6; --soft: #262624; --on-accent: #101010; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+.meta, .why, .muted { color: var(--muted); font-size: 13px; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex: none; }
+.lang button { font: inherit; font-size: 13px; font-weight: 650; background: transparent; color: var(--muted); border: 0; padding: 5px 11px; cursor: pointer; }
+.lang button:hover { background: var(--soft); }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.applied { background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin: 12px 0; font-weight: 600; }
+.how { background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+.how h2 { font-size: 18px; margin: 0 0 4px; }
+.how h3 { font-size: 15px; margin: 14px 0 4px; }
+.how p { margin: 4px 0; }
+pre { background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin: 6px 0; overflow-x: auto; font-size: 13px; line-height: 1.5; user-select: all; }
+.copy { font: inherit; font-size: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+.copy:hover { background: var(--soft); }
+section { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+h2 { font-size: 17px; margin: 0 0 6px; }
+.id { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+.answer { font-weight: 600; }
+dl.plain { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 8px 0; }
+dl.plain dt { color: var(--muted); font-size: 13px; font-weight: 600; padding-top: 1px; }
+dl.plain dd { margin: 0; }
+@media (max-width: 600px) { dl.plain { grid-template-columns: 1fr; } dl.plain dd { margin-bottom: 6px; } }
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--accent); }
+ul { padding-left: 20px; margin: 6px 0; }
+li { margin: 4px 0; }
+code { font-size: 13px; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<div>
+<h1>{{t "title"}}</h1>
+<p class="meta">{{t "summary" (print (len .Questions)) (print .Items)}}</p>
+</div>
+<div class="lang" role="group" aria-label="Language"><button type="button" data-lang="zh" aria-pressed="true">中</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
+</header>
+{{with .Applied}}<p class="applied" id="applied">{{.}}</p>{{end}}
+<div class="how" id="how">
+<h2>{{t "how.h"}}</h2>
+<p>{{t "how.lead"}}</p>
+<h3>{{t "how.a.h"}}</h3>
+<p>{{t "how.a.b"}}</p>
+<h3>{{t "how.b.h"}}</h3>
+<p>{{t "how.b.1"}}</p>
+<pre id="path"><code>{{if .Path}}{{.Path}}{{else}}review.yaml{{end}}</code></pre>
+<p>{{t "how.b.2" .FirstID}}</p>
+<pre id="example"><code>{{.Example}}</code></pre>
+<p>{{t "how.b.3" .Choices}}</p>
+<p><button type="button" class="copy" data-copy="example"><span class="i" data-k="copy">複製</span></button></p>
+<p>{{t "how.b.4"}}</p>
+<pre id="command"><code>{{.Command}}</code></pre>
+<p><button type="button" class="copy" data-copy="command"><span class="i" data-k="copy">複製</span></button></p>
+<p class="muted">{{t "how.b.5"}}</p>
+</div>
+<p class="meta">{{t "files"}} {{with .Files.Policy}}policy <code>{{.}}</code> {{end}}{{with .Files.Overlay}}overlay <code>{{.}}</code> {{end}}{{with .Files.Workflows}}workflows <code>{{.}}</code>{{end}}</p>
+{{if not .Questions}}<p>{{t "empty"}}</p>{{end}}
+{{range .Questions}}
+<section id="{{.ID}}">
+<span class="id">{{.ID}}</span>
+<dl class="plain">
+{{range .Rows}}<dt>{{.Label}}</dt><dd>{{.Text}}</dd>
+{{end}}</dl>
+{{if .Answered}}<p class="answer">{{.Answered}}{{range $k, $v := .Answer.Change}}; <code>{{$k}}</code> → {{$v}}{{end}}</p>{{end}}
+<details>
+<summary>{{t "q.items" (print (len .Items))}}</summary>
+<p class="why">{{t "q.orig"}} {{.Ask}} {{.Why}}</p>
+<p class="muted">{{t "q.choices"}} {{range $i, $c := .Choices}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}</p>
+<ul>
+{{range .Items}}<li><code>{{.Key}}</code>{{with .Why}}<br><span class="why">{{.}}</span>{{end}}</li>
+{{end}}</ul>
+</details>
+</section>
+{{end}}
+</main>
+<script type="application/json" id="i18n">{{dict}}</script>
+<script>
+(function () {
+  var DICT = JSON.parse(document.getElementById("i18n").textContent), KEY = "lodog-report-lang", lang = "zh";
+  function resolve(a) {
+    if (a.charAt(0) === "@") { var t = DICT[lang][a.slice(1)]; if (t !== undefined) return t; }
+    return a;
+  }
+  function T(k, args) {
+    var tpl = DICT[lang][k]; if (tpl === undefined) return k;
+    (args || []).forEach(function (a, i) { tpl = tpl.split("{" + i + "}").join(resolve(a)); });
+    return tpl;
+  }
+  function setText(el, text) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+    text.split("`").forEach(function (p, i, all) {
+      if (p === "") return;
+      if (i % 2 === 1 && i < all.length - 1) { var c = document.createElement("code"); c.textContent = p; el.appendChild(c); }
+      else { el.appendChild(document.createTextNode(i % 2 === 1 ? "`" + p : p)); }
+    });
+  }
+  function apply() {
+    document.querySelectorAll(".i[data-k]").forEach(function (el) { setText(el, T(el.dataset.k, el.dataset.a ? JSON.parse(el.dataset.a) : [])); });
+    document.documentElement.lang = lang === "zh" ? "zh-Hant" : "en";
+    document.title = T("title");
+    document.querySelectorAll("[data-lang]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false"); });
+  }
+  function pick() {
+    try { var s = localStorage.getItem(KEY); if (s === "zh" || s === "en") return s; } catch (e) {}
+    return /^zh/i.test(navigator.language || "") ? "zh" : "en";
+  }
+  document.querySelectorAll("[data-lang]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (b.dataset.lang === lang) return;
+      lang = b.dataset.lang;
+      try { localStorage.setItem(KEY, lang); } catch (e) {}
+      apply();
+    });
+  });
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = document.getElementById(b.dataset.copy).textContent, label = b.firstChild;
+      function done() { label.dataset.k = "copied"; apply(); setTimeout(function () { label.dataset.k = "copy"; apply(); }, 1500); }
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function () {}); }
+    });
+  });
+  document.documentElement.classList.add("js");
+  lang = pick();
+  if (lang !== "zh") apply();
+})();
+</script>
+</body>
+</html>

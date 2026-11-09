@@ -1,0 +1,33 @@
+version: 2
+project_name: lodog
+
+before:
+  hooks:
+    - go mod tidy -diff
+
+builds:
+  - main: ./cmd/lodog
+    binary: lodog
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/iml885203/lodog/internal/cli.version={{.Tag}}
+
+# Plain binaries named lodog_<os>_<arch>, so a user downloads one file.
+archives:
+  - formats: [binary]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: iml885203
+    name: lodog
+
+changelog:
+  disable: true

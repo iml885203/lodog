@@ -1,0 +1,62 @@
+# {{.Name}}
+
+lodog 的設定：讓 agent 透過 MCP 使用 {{.Name}} 的 API，不用改 {{.Name}} 的程式。
+
+| 檔案 | 內容 |
+|---|---|
+| `case.yaml` | 系統的說明：API 位置、登入方式 |
+| `spec/openapi.json` | 系統自己的 OpenAPI 文件（來源：{{.Swagger}}），不要手改 |
+| `gateway/L0.yaml` | gateway 設定：每個 operation 原樣變成一個 tool |
+| `gateway/L1.yaml` | 同上，套用 `spec/overlay.yaml` 的說明（要先 `lodog enrich`） |
+| `gateway/L3.yaml` | L2 的任務 tool（`spec/workflows.arazzo.yaml`，要先 `lodog workflows draft`）加上 `spec/policy.yaml` 決定每個呼叫放行、等人核准或擋下（要先 `lodog policy draft`） |
+{{- if .WithBench}}
+| `tasks.md`、`expected/answers.yaml` | 題庫範例：各一題，照題型再補（[題型](https://github.com/iml885203/lodog/-/blob/master/docs/benchmark-task-types.md)） |
+| `rubric.yaml` | 評分的權重和模型 |
+{{- end}}
+
+## 開始
+
+1. 打開 `gateway/L0.yaml`，把 `TODO` 填好，確認 `auth`（欄位從文件的 securitySchemes 讀出，檔裡註解寫了依據）和 `upstream`。L1、L3 的 `auth`、`upstream` 一樣，改一份就要三份一起改。
+2. 把帳號環境變數設好：
+{{.EnvHelp}}
+3. 在**包含 `{{.Dir}}/` 的資料夾**執行（不是進到 `{{.Dir}}/` 裡面）：
+
+   ```bash
+   lodog serve -c {{.Dir}}/gateway/L0.yaml
+   ```
+
+4. agent 連 `http://127.0.0.1:7400/mcp`。
+
+## 升到 L1、L2、L3
+
+```bash
+lodog enrich --case {{.Dir}}                    # 補說明，寫 {{.Dir}}/spec/overlay.yaml；審核 needsReview 的項目
+lodog serve -c {{.Dir}}/gateway/L1.yaml
+
+lodog workflows draft --case {{.Dir}}           # 草擬約 20 個任務 tool，寫 {{.Dir}}/spec/workflows.arazzo.yaml；人工審核
+sed 's/^level: L1/level: L2/' {{.Dir}}/gateway/L1.yaml > {{.Dir}}/gateway/L2.yaml
+lodog serve -c {{.Dir}}/gateway/L2.yaml
+
+lodog policy draft {{.Dir}}/spec/openapi.json --case {{.Dir}} --out {{.Dir}}/spec/policy.yaml   # 草擬風險規則，人工審核
+lodog serve -c {{.Dir}}/gateway/L3.yaml
+```
+
+少了 overlay、workflows 或 policy 檔，L1、L2、L3 起不來，錯誤訊息會說要先跑哪個指令。
+
+## 打分數
+
+```bash
+lodog score -c {{.Dir}}/gateway/L0.yaml
+```
+{{if .WithBench}}
+## 題庫
+
+`tasks.md` 和 `expected/answers.yaml` 各有一題範例，內容都是 TODO，要換成你系統的真實資料。
+`case.yaml` 的 `benchmark.reset` 也要填：每次嘗試前把資料重置回固定狀態的指令。
+`versions` 也要填至少一項：題庫是對哪個版本出的、怎麼問正在跑的系統是哪個版本；不符時 `lodog bench run` 不開跑。
+填完先檢查：
+
+```bash
+lodog bench check --case {{.Dir}}
+```
+{{end}}

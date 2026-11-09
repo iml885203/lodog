@@ -1,0 +1,24 @@
+# L0: every operation in spec/openapi.json served as one MCP tool, as the
+# document describes it. See docs/contracts.md section 2.
+#
+# Run from the folder that contains cases/keycloak/, not from inside it:
+#   lodog serve -c cases/keycloak/gateway/L0.yaml
+# Agents connect to http://<listen>/mcp.
+case: cases/keycloak
+level: L0
+# Own ports (7420-7422), so this case runs next to backoffice (7400-7402).
+listen: 127.0.0.1:7420
+
+# The recording proxy (lodog bench proxy --upstream http://localhost:8180 --listen 127.0.0.1:7421).
+upstream: http://127.0.0.1:7421
+
+# Keycloak issues a machine token to the client env/up.sh creates in the master realm.
+auth:
+  type: oauth2-client-credentials
+  token_url: /realms/master/protocol/openid-connect/token
+  client_id_env: LODOG_UPSTREAM_CLIENT_ID
+  client_secret_env: LODOG_UPSTREAM_CLIENT_SECRET
+
+identity:
+  actor: agent:lodog-bench
+  on_behalf_of: user:alice

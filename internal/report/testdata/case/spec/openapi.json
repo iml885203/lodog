@@ -1,0 +1,25 @@
+{
+  "openapi": "3.0.1",
+  "info": {"title": "shop", "version": "1"},
+  "paths": {
+    "/players/{id}": {
+      "get": {
+        "summary": "Read one player",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "ok"}}
+      }
+    },
+    "/players/{id}/bonus": {
+      "post": {
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "ok"}}
+      }
+    },
+    "/players/{id}/resetPassword": {
+      "get": {
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "ok"}}
+      }
+    }
+  }
+}

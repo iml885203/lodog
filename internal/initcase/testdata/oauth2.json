@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Machine API",
+    "version": "1"
+  },
+  "paths": {
+    "/things": {
+      "get": {
+        "summary": "List things",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a thing",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "idp": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://idp.example.test/realms/m/protocol/openid-connect/token",
+            "scopes": {
+              "read": "read",
+              "write": "write"
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://machine.example.test"
+    }
+  ],
+  "security": [
+    {
+      "idp": [
+        "read"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# L2: the task tools of spec/workflows.arazzo.yaml (lodog workflows draft, not
+# reviewed) over the L1 overlay, nothing enforced. See docs/contracts.md section 2.
+#
+# Run from the folder that contains cases/keycloak/, not from inside it:
+#   lodog serve -c cases/keycloak/gateway/L2.yaml
+# Agents connect to http://<listen>/mcp.
+case: cases/keycloak
+level: L2
+# Own ports (7420-7422), so this case runs next to backoffice (7400-7402).
+listen: 127.0.0.1:7420
+
+# The recording proxy (lodog bench proxy --upstream http://localhost:8180 --listen 127.0.0.1:7421).
+upstream: http://127.0.0.1:7421
+
+# Keycloak issues a machine token to the client env/up.sh creates in the master realm.
+auth:
+  type: oauth2-client-credentials
+  token_url: /realms/master/protocol/openid-connect/token
+  client_id_env: LODOG_UPSTREAM_CLIENT_ID
+  client_secret_env: LODOG_UPSTREAM_CLIENT_SECRET
+
+identity:
+  actor: agent:lodog-bench
+  on_behalf_of: user:alice

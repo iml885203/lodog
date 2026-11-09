@@ -1,0 +1,13 @@
+.tools/
+bin/
+.env
+.cache/
+runs/
+dist/
+node_modules/
+e2e/report-ui/results/
+
+.DS_Store
+*.pem
+*.key
+.env.*

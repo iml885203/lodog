@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mixed",
+    "version": "1"
+  },
+  "paths": {
+    "/things": {
+      "get": {
+        "summary": "List things",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a thing",
+        "responses": {
+          "200": {
+            "description": "ok"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sso": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://sso/a",
+            "tokenUrl": "https://sso/t",
+            "scopes": {}
+          }
+        }
+      },
+      "basic": {
+        "type": "http",
+        "scheme": "basic"
+      },
+      "key": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token"
+      },
+      "alpha": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Alpha"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://mixed.example.test"
+    }
+  ],
+  "security": [
+    {
+      "key": []
+    }
+  ]
+}

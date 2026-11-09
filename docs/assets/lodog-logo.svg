@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118 44" width="118" height="44" role="img" aria-label="lodog">
+  <style>
+    .w { fill: #14222b; font: 800 30px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", sans-serif; letter-spacing: -1.5px; }
+    .g { fill: none; stroke: #126747; stroke-width: 3.2; stroke-linejoin: round; }
+    .s { fill: #c2611f; }
+    @media (prefers-color-scheme: dark) { .w { fill: #edf3f4; } .g { stroke: #98f0c4; } .s { fill: #f0a35e; } }
+  </style>
+  <!-- The trick: the first o of "lodog" turns into a gate, and a spark marks the new trick. -->
+  <text class="w" x="2" y="35">l</text>
+  <g transform="rotate(-12 21 27)">
+    <path class="g" d="M 14.5 36 L 14.5 20.5 A 6.5 6.5 0 0 1 27.5 20.5 L 27.5 36 Z"/>
+  </g>
+  <path class="s" d="M 32 3 L 33.4 7.1 L 37.5 8.5 L 33.4 9.9 L 32 14 L 30.6 9.9 L 26.5 8.5 L 30.6 7.1 Z"/>
+  <text class="w" x="37" y="35">dog</text>
+</svg>

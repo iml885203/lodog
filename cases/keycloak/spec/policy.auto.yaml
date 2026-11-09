@@ -1,0 +1,1276 @@
+# Drafted by `lodog policy draft` from cases/keycloak/spec/openapi.json; model claude-opus-5-5.
+# 415 operations: 281 decided by heuristics, 134 by the model, 32 need review.
+# A draft for an ops or risk owner to review before it is used (docs/policy.md):
+# check the irreversible, money and credential rules and every "needs review" line.
+# Each operation has its own rule; an operation the document did not have
+# when this was drafted falls to the default, which needs approval.
+
+# Risk levels:
+#   irreversible approval cannot be undone or leaves the system: deletes, payouts, settled money, messages
+#   money        approval moves money or value
+#   credential   hide     passwords, OTPs, unlocks, tokens
+#   write        approval changes ordinary records
+#   internal     hide     service-to-service, no operator calls it
+#   test         hide     test or debug endpoints
+#   read         allow    looks things up
+risks:
+  credential: hide
+  internal: hide
+  irreversible: approval
+  money: approval
+  read: allow
+  test: hide
+  write: approval
+rules:
+  # irreversible: 67 operations
+  - match: POST /admin/realms/{realm}/push-revocation
+    risk: irreversible
+    why: 'needs review: model, not confident: Pushes a token revocation policy to external client admin URLs, sending it outside the system'
+  - match: DELETE /admin/realms/{realm}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/admin-events
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/attack-detection/brute-force/users
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/attack-detection/brute-force/users/{userId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/authentication/config/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/authentication/executions/{executionId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/authentication/flows/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/authentication/required-actions/{alias}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/authentication/required-actions/{alias}/config
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-scopes/{client-scope-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/clients/{client}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-templates/{client-scope-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/models/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/clients/{client}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients-initial-access/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/{scope-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/default-client-scopes/{clientScopeId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/nodes/{node}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/optional-client-scopes/{clientScopeId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/models/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/push-revocation
+    risk: irreversible
+    why: 'model: Pushes the revocation policy to the client''s external admin URL, so it sends something outside the system'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/clients/{client}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/components/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/default-default-client-scopes/{clientScopeId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/default-groups/{groupId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/default-optional-client-scopes/{clientScopeId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/events
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/groups/{group-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/groups/{group-id}/role-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/identity-provider/instances/{alias}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/identity-provider/instances/{alias}/mappers/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/localization/{locale}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/localization/{locale}/{key}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/members/{userId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/identity-providers/{alias}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/invitations/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/invitations/{id}/resend
+    risk: irreversible
+    why: 'model: Resends an invitation email outside the system'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/members/invite-existing-user
+    risk: irreversible
+    why: 'model: Sends an invitation email to an existing user outside the system'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/members/invite-user
+    risk: irreversible
+    why: 'model: Sends an invitation or registration link by email outside the system'
+  - match: DELETE /admin/realms/{realm}/organizations/{org-id}/members/{member-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/roles-by-id/{role-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/roles-by-id/{role-id}/composites
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/roles/{role-name}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/roles/{role-name}/composites
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/sessions/{session}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/execute-actions-email
+    risk: irreversible
+    why: 'model: Sends an email outside the system with action links such as password reset'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/federated-identity/{provider}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/groups/{groupId}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/role-mappings/clients/{client-id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/role-mappings/realm
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/send-verify-email
+    risk: irreversible
+    why: 'model: Sends a verification email outside the system'
+  - match: DELETE /admin/realms/{realm}/workflows/{id}
+    risk: irreversible
+    why: 'heuristic: a DELETE: a deleted record does not come back'
+  # credential: 39 operations
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}/download
+    risk: credential
+    why: 'needs review: model, not confident: Downloads a keystore and takes key and store passwords; looks read-only but handles key material'
+  - match: POST /admin/realms/{realm}/components
+    risk: credential
+    why: 'needs review: model, not confident: Generic component create with no summary; components include key providers (signing keys) and user federation with bind credentials'
+  - match: PUT /admin/realms/{realm}/components/{id}
+    risk: credential
+    why: 'needs review: model, not confident: Generic component update with no summary; may change key providers or federation bind credentials'
+  - match: POST /admin/realms/{realm}/identity-provider/instances
+    risk: credential
+    why: 'needs review: model, not confident: Creates an identity provider whose config carries client secrets and token-storage settings'
+  - match: PUT /admin/realms/{realm}/identity-provider/instances/{alias}
+    risk: credential
+    why: 'needs review: model, not confident: Updates an identity provider, including client secrets and login trust settings in its config'
+  - match: POST /admin/realms/{realm}/logout-all
+    risk: credential
+    why: 'needs review: model, not confident: Invalidates every user session and token in the realm; sessions cannot be restored'
+  - match: POST /admin/realms/{realm}/users
+    risk: credential
+    why: 'needs review: model, not confident: Creates a user whose body can set credentials/passwords and TOTP, otherwise an ordinary record'
+  - match: PUT /admin/realms/{realm}/users/{user-id}
+    risk: credential
+    why: 'needs review: model, not confident: General user update, but the body accepts credentials, totp and requiredActions, so it can set passwords or OTP config'
+  - match: POST /admin/realms/{realm}/users/{user-id}/federated-identity/{provider}
+    risk: credential
+    why: 'needs review: model, not confident: Links an external identity provider login to the user, which changes how the account can authenticate'
+  - match: POST /admin/realms/{realm}/users/{user-id}/logout
+    risk: credential
+    why: 'needs review: model, not confident: Revokes all user sessions and tokens and notifies external clients; the sessions cannot be restored'
+  - match: PUT /admin/realms/{realm}
+    risk: credential
+    why: 'model: Realm update body includes privateKey, publicKey, codeSecret, passwordPolicy, OTP policy, brute-force and token lifespan settings'
+  - match: POST /admin/realms/{realm}/clients-initial-access
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}/generate
+    risk: credential
+    why: 'model: Generates a new certificate and key pair for the client, replacing the existing keys'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}/generate-and-download
+    risk: credential
+    why: 'model: Generates a key pair and returns the private key, which is not stored in Keycloak'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}/upload
+    risk: credential
+    why: 'model: Uploads a client certificate used for authentication or signing'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}/upload-certificate
+    risk: credential
+    why: 'model: Uploads a client certificate used for authentication or signing'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/client-secret
+    risk: credential
+    why: 'heuristic: names a credential (secret)'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/client-secret
+    risk: credential
+    why: 'heuristic: names a credential (secret)'
+  - match: DELETE /admin/realms/{realm}/clients/{client-uuid}/client-secret/rotated
+    risk: credential
+    why: 'heuristic: names a credential (secret)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/client-secret/rotated
+    risk: credential
+    why: 'heuristic: names a credential (secret)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/generate-example-access-token
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/generate-example-id-token
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/protocol-mappers
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/scope-mappings/{roleContainerId}/granted
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/scope-mappings/{roleContainerId}/not-granted
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/registration-access-token
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/credential-registrators
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: POST /admin/realms/{realm}/identity-provider/upload-certificate
+    risk: credential
+    why: 'model: Uploads a certificate and derives the JWKS or public key from it'
+  - match: GET /admin/realms/{realm}/users/{user-id}/configured-user-storage-credential-types
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/consents/{client}
+    risk: credential
+    why: 'heuristic: names a credential (token)'
+  - match: GET /admin/realms/{realm}/users/{user-id}/credentials
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: DELETE /admin/realms/{realm}/users/{user-id}/credentials/{credentialId}
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: POST /admin/realms/{realm}/users/{user-id}/credentials/{credentialId}/moveAfter/{newPreviousCredentialId}
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: POST /admin/realms/{realm}/users/{user-id}/credentials/{credentialId}/moveToFirst
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/credentials/{credentialId}/userLabel
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/disable-credential-types
+    risk: credential
+    why: 'heuristic: names a credential (credential)'
+  - match: POST /admin/realms/{realm}/users/{user-id}/impersonation
+    risk: credential
+    why: 'model: Impersonation issues a session or tokens acting as the user'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/reset-password
+    risk: credential
+    why: 'heuristic: names a credential (password)'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/reset-password-email
+    risk: credential
+    why: 'heuristic: names a credential (password)'
+  # write: 109 operations
+  - match: POST /admin/realms
+    risk: write
+    why: 'needs review: model, not confident: Imports a whole realm from a full representation, which may carry users, credentials, client secrets and keys; it creates records, but a person should decide whether the embedded secrets make it credential'
+  - match: PUT /admin/realms/{realm}/authentication/flows/{flowAlias}/executions
+    risk: write
+    why: 'needs review: model, not confident: Edits execution requirements in a flow; reversible, but it can switch MFA steps to DISABLED, so a person should judge whether to treat it as credential-level'
+  - match: POST /admin/realms/{realm}/client-description-converter
+    risk: write
+    why: 'needs review: model, not confident: Appears to only convert a client description (e.g. SAML/OIDC metadata) into a representation without persisting it; a read-like POST, so a person should decide whether to allow it'
+  - match: POST /admin/realms/{realm}/clients
+    risk: write
+    why: 'needs review: model, not confident: Creates a client; the body can set a client secret and registration access token, so a reviewer should check whether credential handling applies'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}
+    risk: write
+    why: 'needs review: model, not confident: Updates a client; the body can change the client secret and registration access token, so it may be a credential change'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/import
+    risk: write
+    why: 'needs review: model, not confident: Imports authorization settings in bulk; it may overwrite existing policies and resources, which makes undoing it harder'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/evaluate
+    risk: write
+    why: 'needs review: model, not confident: Evaluates permissions for a user or resource; looks read-only despite POST, so a person should decide'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/evaluate
+    risk: write
+    why: 'needs review: model, not confident: Evaluates policies for a user or resource; looks read-only despite POST, so a person should decide'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/generate-example-saml-response
+    risk: write
+    why: 'needs review: model, not confident: GET that generates an example SAML response for a user; appears read-only, so a person should decide'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/evaluate-scopes/generate-example-userinfo
+    risk: write
+    why: 'needs review: model, not confident: GET that generates example userinfo for a user; appears read-only, so a person should decide'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/management/permissions
+    risk: write
+    why: 'needs review: model, not confident: Enables or disables fine-grained permissions on a role despite the read-like summary; turning it off may drop the policies it generated'
+  - match: PUT /admin/realms/{realm}/groups/{group-id}/management/permissions
+    risk: write
+    why: 'needs review: model, not confident: Enables or disables fine-grained permissions on a group despite the read-like summary'
+  - match: POST /admin/realms/{realm}/identity-provider/import-config
+    risk: write
+    why: 'needs review: model, not confident: Looks like it only reads: it parses or fetches identity provider metadata and returns it without saving, but it may make an outbound fetch'
+  - match: PUT /admin/realms/{realm}/identity-provider/instances/{alias}/management/permissions
+    risk: write
+    why: 'needs review: model, not confident: Enables or disables fine-grained permissions on an identity provider despite the read-like summary'
+  - match: POST /admin/realms/{realm}/partial-export
+    risk: write
+    why: 'needs review: model, not confident: Looks read-only because it exports realm config as JSON via POST; may expose client and role config, so a person should decide'
+  - match: POST /admin/realms/{realm}/partialImport
+    risk: write
+    why: 'needs review: model, not confident: Bulk-imports realm resources and may overwrite or skip existing ones depending on policy, which can be hard to undo'
+  - match: PUT /admin/realms/{realm}/roles-by-id/{role-id}/management/permissions
+    risk: write
+    why: 'needs review: model, not confident: Enables or disables fine-grained permissions on a role; the summary describes a read, which contradicts the PUT'
+  - match: PUT /admin/realms/{realm}/roles/{role-name}/management/permissions
+    risk: write
+    why: 'needs review: model, not confident: Enables or disables fine-grained permissions on a role; the summary describes a read, which contradicts the PUT'
+  - match: POST /admin/realms/{realm}/workflows/migrate
+    risk: write
+    why: 'needs review: model, not confident: Bulk-moves scheduled resources between workflow steps; the effect and how to reverse it are unclear'
+  - match: POST /admin/realms/{realm}/workflows/{id}/activate/{type}/{resourceId}
+    risk: write
+    why: 'needs review: model, not confident: Activates a workflow for a resource; the workflow steps may then run actions with irreversible effects'
+  - match: POST /admin/realms/{realm}/authentication/config
+    risk: write
+    why: 'model: Creates an authenticator configuration record that can be edited or removed later'
+  - match: PUT /admin/realms/{realm}/authentication/config/{id}
+    risk: write
+    why: 'model: Updates an authenticator configuration record; a later edit can revert it'
+  - match: POST /admin/realms/{realm}/authentication/executions
+    risk: write
+    why: 'model: Adds an authentication execution to a flow; a later edit can remove it'
+  - match: POST /admin/realms/{realm}/authentication/executions/{executionId}/config
+    risk: write
+    why: 'model: Sets the configuration of an authentication execution; a later edit can revert it'
+  - match: POST /admin/realms/{realm}/authentication/executions/{executionId}/lower-priority
+    risk: write
+    why: 'model: Reorders an authentication execution; reversible by raising its priority'
+  - match: POST /admin/realms/{realm}/authentication/executions/{executionId}/raise-priority
+    risk: write
+    why: 'model: Reorders an authentication execution; reversible by lowering its priority'
+  - match: POST /admin/realms/{realm}/authentication/flows
+    risk: write
+    why: 'model: Creates a new authentication flow record'
+  - match: POST /admin/realms/{realm}/authentication/flows/{flowAlias}/copy
+    risk: write
+    why: 'model: Copies an existing authentication flow under a new name'
+  - match: POST /admin/realms/{realm}/authentication/flows/{flowAlias}/executions/execution
+    risk: write
+    why: 'model: Adds an execution to an existing authentication flow'
+  - match: POST /admin/realms/{realm}/authentication/flows/{flowAlias}/executions/flow
+    risk: write
+    why: 'model: Adds a sub-flow with an execution to an existing authentication flow'
+  - match: PUT /admin/realms/{realm}/authentication/flows/{id}
+    risk: write
+    why: 'model: Updates an authentication flow''s definition; a later edit can revert it'
+  - match: POST /admin/realms/{realm}/authentication/register-required-action
+    risk: write
+    why: 'model: Registers a required-action provider in the realm'
+  - match: PUT /admin/realms/{realm}/authentication/required-actions/{alias}
+    risk: write
+    why: 'model: Updates a required action''s settings, such as enabled, default and priority'
+  - match: PUT /admin/realms/{realm}/authentication/required-actions/{alias}/config
+    risk: write
+    why: 'model: Updates a required action''s configuration map'
+  - match: POST /admin/realms/{realm}/authentication/required-actions/{alias}/lower-priority
+    risk: write
+    why: 'model: Reorders a required action; reversible'
+  - match: POST /admin/realms/{realm}/authentication/required-actions/{alias}/raise-priority
+    risk: write
+    why: 'model: Reorders a required action; reversible'
+  - match: PUT /admin/realms/{realm}/client-policies/policies
+    risk: write
+    why: 'model: Replaces the realm''s client policies; a later edit can revert them'
+  - match: PUT /admin/realms/{realm}/client-policies/profiles
+    risk: write
+    why: 'model: Replaces the realm''s client profiles; a later edit can revert them'
+  - match: POST /admin/realms/{realm}/client-scopes
+    risk: write
+    why: 'model: Creates a client scope'
+  - match: PUT /admin/realms/{realm}/client-scopes/{client-scope-id}
+    risk: write
+    why: 'model: Updates a client scope'
+  - match: POST /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/add-models
+    risk: write
+    why: 'model: Creates multiple protocol mappers on a client scope'
+  - match: POST /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models
+    risk: write
+    why: 'model: Creates a protocol mapper on a client scope'
+  - match: PUT /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}
+    risk: write
+    why: 'model: Updates a protocol mapper on a client scope'
+  - match: POST /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/clients/{client}
+    risk: write
+    why: 'model: Adds client-level role mappings to a client scope; removable later'
+  - match: POST /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/realm
+    risk: write
+    why: 'model: Adds realm-level role mappings to a client scope; removable later'
+  - match: POST /admin/realms/{realm}/client-templates
+    risk: write
+    why: 'model: Legacy client-templates path that creates a client scope'
+  - match: PUT /admin/realms/{realm}/client-templates/{client-scope-id}
+    risk: write
+    why: 'model: Updates a client scope''s configuration; a later edit can revert it'
+  - match: POST /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/add-models
+    risk: write
+    why: 'model: Creates protocol mappers on a client scope; they can be edited or removed later'
+  - match: POST /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/models
+    risk: write
+    why: 'model: Creates a single protocol mapper; an ordinary config record'
+  - match: PUT /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/models/{id}
+    risk: write
+    why: 'model: Updates an existing protocol mapper; reversible by another edit'
+  - match: POST /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/clients/{client}
+    risk: write
+    why: 'model: Adds client-level role mappings to a scope; access-affecting but removable'
+  - match: POST /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/realm
+    risk: write
+    why: 'model: Adds realm-level role mappings to a scope; access-affecting but removable'
+  - match: PUT /admin/realms/{realm}/client-types
+    risk: write
+    why: 'model: Updates realm client type definitions; reversible configuration change'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server
+    risk: write
+    why: 'model: Updates resource server authorization settings; no tag or summary, but the body is ordinary config'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission
+    risk: write
+    why: 'model: Creates an authorization permission; no params or summary, but the path shows record creation'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy
+    risk: write
+    why: 'model: Creates an authorization policy; a removable config record'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource
+    risk: write
+    why: 'model: Creates an authorization resource record'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}
+    risk: write
+    why: 'model: Updates an authorization resource record; reversible'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope
+    risk: write
+    why: 'model: Creates an authorization scope record'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/{scope-id}
+    risk: write
+    why: 'model: Updates an authorization scope record; reversible'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/default-client-scopes/{clientScopeId}
+    risk: write
+    why: 'model: Attaches a default client scope to a client; removable'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/management/permissions
+    risk: write
+    why: 'model: Enables or disables fine-grained management permissions for a client; reversible toggle'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/optional-client-scopes/{clientScopeId}
+    risk: write
+    why: 'model: Attaches an optional client scope to a client; removable'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/add-models
+    risk: write
+    why: 'model: Creates several protocol mappers on a client; they can be edited or removed later'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/models
+    risk: write
+    why: 'model: Creates one protocol mapper on a client; it can be edited or removed later'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/models/{id}
+    risk: write
+    why: 'model: Updates an existing protocol mapper''s configuration'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/roles
+    risk: write
+    why: 'model: Creates a client role'
+  - match: PUT /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}
+    risk: write
+    why: 'model: Updates a client role by name'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites
+    risk: write
+    why: 'model: Adds composite roles to a client role; they can be removed later'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/clients/{client}
+    risk: write
+    why: 'model: Adds client-level roles to a client''s scope mapping'
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/realm
+    risk: write
+    why: 'model: Adds realm-level roles to a client''s scope mapping'
+  - match: PUT /admin/realms/{realm}/default-default-client-scopes/{clientScopeId}
+    risk: write
+    why: 'model: Adds a client scope to the realm''s default client scopes'
+  - match: PUT /admin/realms/{realm}/default-groups/{groupId}
+    risk: write
+    why: 'model: Adds a group to the realm''s default groups for new users'
+  - match: PUT /admin/realms/{realm}/default-optional-client-scopes/{clientScopeId}
+    risk: write
+    why: 'model: Adds a client scope to the realm''s default optional client scopes'
+  - match: PUT /admin/realms/{realm}/events/config
+    risk: write
+    why: 'model: Updates the realm''s event and admin-event logging settings; this is a config edit, though disabling it weakens auditing'
+  - match: POST /admin/realms/{realm}/groups
+    risk: write
+    why: 'model: Creates a top-level group or attaches a child group'
+  - match: PUT /admin/realms/{realm}/groups/{group-id}
+    risk: write
+    why: 'model: Updates a group''s attributes'
+  - match: POST /admin/realms/{realm}/groups/{group-id}/children
+    risk: write
+    why: 'model: Creates or moves a child group under a group'
+  - match: POST /admin/realms/{realm}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: write
+    why: 'model: Adds client-level role mappings to a group; they can be removed later'
+  - match: POST /admin/realms/{realm}/groups/{group-id}/role-mappings/realm
+    risk: write
+    why: 'model: Adds realm-level role mappings to a group; they can be removed later'
+  - match: POST /admin/realms/{realm}/identity-provider/instances/{alias}/mappers
+    risk: write
+    why: 'model: Adds an attribute/role mapper to an identity provider'
+  - match: PUT /admin/realms/{realm}/identity-provider/instances/{alias}/mappers/{id}
+    risk: write
+    why: 'model: Updates an identity provider mapper'
+  - match: POST /admin/realms/{realm}/localization/{locale}
+    risk: write
+    why: 'model: Imports localization text for a locale; it can be overwritten later'
+  - match: PUT /admin/realms/{realm}/localization/{locale}/{key}
+    risk: write
+    why: 'model: Sets a realm localization text entry, an ordinary editable config record'
+  - match: POST /admin/realms/{realm}/organizations
+    risk: write
+    why: 'model: Creates an organization record'
+  - match: PUT /admin/realms/{realm}/organizations/{org-id}
+    risk: write
+    why: 'model: Updates an organization record'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/groups
+    risk: write
+    why: 'model: Creates or moves an organization group'
+  - match: PUT /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}
+    risk: write
+    why: 'model: Updates an organization group'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/children
+    risk: write
+    why: 'model: Creates or moves a subgroup'
+  - match: PUT /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/members/{userId}
+    risk: write
+    why: 'model: Adds a user to an organization group; can be removed later'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: write
+    why: 'model: Grants client roles to a group, a revocable mapping that affects privileges'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/realm
+    risk: write
+    why: 'model: Grants realm roles to a group, a revocable mapping that affects privileges'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/identity-providers
+    risk: write
+    why: 'model: Links an identity provider to an organization'
+  - match: PUT /admin/realms/{realm}/organizations/{org-id}/identity-providers/{alias}
+    risk: write
+    why: 'model: Updates the organization''s identity provider association config'
+  - match: POST /admin/realms/{realm}/organizations/{org-id}/members
+    risk: write
+    why: 'model: Adds a user as an organization member'
+  - match: PUT /admin/realms/{realm}/organizations/{org-id}/members/{member-id}/membership-type
+    risk: write
+    why: 'model: Changes a member''s membership type'
+  - match: POST /admin/realms/{realm}/roles
+    risk: write
+    why: 'model: Creates a role'
+  - match: PUT /admin/realms/{realm}/roles-by-id/{role-id}
+    risk: write
+    why: 'model: Updates a role by ID'
+  - match: POST /admin/realms/{realm}/roles-by-id/{role-id}/composites
+    risk: write
+    why: 'model: Adds child roles to a composite role'
+  - match: PUT /admin/realms/{realm}/roles/{role-name}
+    risk: write
+    why: 'model: Updates a role by name'
+  - match: POST /admin/realms/{realm}/roles/{role-name}/composites
+    risk: write
+    why: 'model: Adds composites to a role'
+  - match: PUT /admin/realms/{realm}/users-management-permissions
+    risk: write
+    why: 'model: Toggles the realm''s users-management fine-grained permissions setting'
+  - match: PUT /admin/realms/{realm}/users/profile
+    risk: write
+    why: 'model: Updates the realm''s user profile attribute configuration'
+  - match: PUT /admin/realms/{realm}/users/{user-id}/groups/{groupId}
+    risk: write
+    why: 'model: Adds the user to a group; can be undone by removing the membership. There is no summary, so this is inferred from the path'
+  - match: POST /admin/realms/{realm}/users/{user-id}/role-mappings/clients/{client-id}
+    risk: write
+    why: 'model: Adds client role mappings; a later edit can remove them, though they grant privileges'
+  - match: POST /admin/realms/{realm}/users/{user-id}/role-mappings/realm
+    risk: write
+    why: 'model: Adds realm role mappings; a later edit can remove them, though they grant privileges'
+  - match: POST /admin/realms/{realm}/workflows
+    risk: write
+    why: 'model: Creates a workflow definition record'
+  - match: PUT /admin/realms/{realm}/workflows/{id}
+    risk: write
+    why: 'model: Edits a workflow definition'
+  - match: POST /admin/realms/{realm}/workflows/{id}/deactivate/{type}/{resourceId}
+    risk: write
+    why: 'model: Deactivates a workflow for a resource; it can be reactivated'
+  # internal: 1 operations
+  - match: POST /admin/realms/{realm}/clients/{client-uuid}/nodes
+    risk: internal
+    why: 'needs review: model, not confident: Registers a cluster node; the summary says the adapter normally calls this, not an operator'
+  # test: 2 operations
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/test-nodes-available
+    risk: test
+    why: 'heuristic: path segment "test-nodes-available" marks a test endpoint'
+  - match: POST /admin/realms/{realm}/testSMTPConnection
+    risk: test
+    why: 'heuristic: path segment "testSMTPConnection" marks a test endpoint'
+  # read: 197 operations
+  - match: GET /admin/realms
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/admin-events
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/attack-detection/brute-force/users/{userId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/authenticator-providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/client-authenticator-providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/config-description/{providerId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/config/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/executions/{executionId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/executions/{executionId}/config/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/flows
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/flows/{flowAlias}/executions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/flows/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/form-action-providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/form-providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/per-client-config-description
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/required-actions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/required-actions/{alias}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/required-actions/{alias}/config
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/required-actions/{alias}/config-description
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/authentication/unregistered-required-actions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-policies/policies
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-policies/profiles
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-registration-policy/providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/models/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/protocol-mappers/protocol/{protocol}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/clients/{client}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/clients/{client}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/clients/{client}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-scopes/{client-scope-id}/scope-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-session-stats
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/models
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/models/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/protocol-mappers/protocol/{protocol}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/clients/{client}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/clients/{client}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/clients/{client}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-templates/{client-scope-id}/scope-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/client-types
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients-initial-access
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/permission/search
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/policy/search
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/search
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}/attributes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/resource/{resource-id}/scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/search
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/{scope-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/{scope-id}/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/scope/{scope-id}/resources
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/authz/resource-server/settings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/certificates/{attr}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/default-client-scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/installation/providers/{providerId}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/offline-session-count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/offline-sessions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/optional-client-scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/models
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/models/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/protocol-mappers/protocol/{protocol}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites/clients/{targetClientUuid}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/composites/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/roles/{role-name}/users
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/clients/{client}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/clients/{client}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/clients/{client}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/scope-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/service-account-user
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/session-count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/clients/{client-uuid}/user-sessions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/components
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/components/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/components/{id}/sub-component-types
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/default-default-client-scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/default-groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/default-optional-client-scopes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/events
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/events/config
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/group-by-path/{path}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/children
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/members
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/clients/{client-id}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/clients/{client-id}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/groups/{group-id}/role-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/export
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/mapper-types
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/mappers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/mappers/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/instances/{alias}/reload-keys
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/identity-provider/providers/{provider_id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/keys
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/localization
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/localization/{locale}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/localization/{locale}/{key}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/members/{member-id}/organizations
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/group-by-path/{path}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/children
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/members
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/clients/{client-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/clients/{client-id}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/clients/{client-id}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/groups/{group-id}/role-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/identity-providers
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/identity-providers/{alias}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/identity-providers/{alias}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/invitations
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/invitations/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/members
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/members/count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/members/{member-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/members/{member-id}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/organizations/{org-id}/members/{member-id}/organizations
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles-by-id/{role-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles-by-id/{role-id}/composites
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles-by-id/{role-id}/composites/clients/{clientUuid}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles-by-id/{role-id}/composites/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles-by-id/{role-id}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/composites
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/composites/clients/{targetClientUuid}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/composites/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/management/permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/roles/{role-name}/users
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users-management-permissions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/profile
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/profile/metadata
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/consents
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/federated-identity
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/groups
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/groups/count
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/offline-sessions/{clientUuid}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/clients/{client-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/clients/{client-id}/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/clients/{client-id}/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/realm
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/realm/available
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/role-mappings/realm/composite
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/sessions
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/users/{user-id}/unmanagedAttributes
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/workflows
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/workflows/scheduled/{resource-id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+  - match: GET /admin/realms/{realm}/workflows/{id}
+    risk: read
+    why: 'heuristic: a GET whose path names no action'
+default: write

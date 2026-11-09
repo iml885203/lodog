@@ -1,0 +1,8 @@
+overlay: 1.0.0
+info:
+  title: shop overlay
+  version: "1"
+actions:
+  - target: $.paths['/players/{id}/bonus'].post
+    update:
+      summary: Give a player a bonus.

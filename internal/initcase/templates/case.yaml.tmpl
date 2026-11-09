@@ -1,0 +1,35 @@
+# {{.Name}}: the legacy system lodog serves to agents.
+# Fill in what you know; lodog reads only the fields listed in docs/contracts.md.
+name: {{.Name}}
+description: TODO one line on what this system does and who uses it
+
+api:
+  # Where the system runs. Must match `upstream` in gateway/*.yaml.
+  base_url: {{.Upstream}}
+  # Where spec/openapi.json came from, so you can fetch it again.
+  swagger: {{.Swagger}}
+  auth:
+    type: {{.Auth}}
+{{- if .Login}}
+    # The login call; the benchmark does not count it as an agent choice.
+    login: {{.Login}}
+{{- end}}
+{{if .WithBench}}
+benchmark:
+  tasks: tasks.md
+  answers: expected/answers.yaml
+  # Run before every task attempt, from the folder you run lodog in, to put the
+  # data back into a known state. lodog splits it on spaces and runs it without
+  # a shell: no quotes, pipes or &&. Point it at a script if you need more.
+  # Uncomment and fill in; `lodog bench` refuses to run without it.
+  # reset: ./{{.Dir}}/reset.sh
+
+# What the benchmark is built against, and how to ask the running system.
+# Before the first attempt `lodog bench run` runs each observe command (from
+# the folder you run lodog in, split on spaces, no shell) and refuses to start
+# unless its trimmed output equals expect. Pin at least one; uncomment and fill in.
+# versions:
+#   - name: source.commit
+#     expect: <commit the benchmark was built against>
+#     observe: ./{{.Dir}}/observe.sh source.commit
+{{- end}}

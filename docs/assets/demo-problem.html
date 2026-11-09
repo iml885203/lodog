@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lodog：問題</title>
+<style>
+:root { color-scheme: light dark; --bg: #f3f6f5; --panel: #fff; --fg: #172e29; --muted: #5b6e68; --line: #cedbd5; --score: #126747; --soft: #e7f2ec; --bad: #a23552; --hero: #112f28; --herotext: #f0faf5; --mint: #98f0c4; --mark: #126747; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0e1d19; --panel: #162923; --fg: #e3eee8; --muted: #abc0b6; --line: #365047; --score: #98f0c4; --soft: #203d31; --bad: #f49ab0; --hero: #0b1714; --mark: #98f0c4; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 4vh 5vw; }
+main { width: 100%; max-width: 1100px; }
+.brand { display: flex; align-items: center; font-size: 32px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 4vh; }
+.brand i { display: inline-block; width: 12px; height: 22px; border: 2px solid var(--mark); border-radius: 8px 8px 2px 2px; margin-right: 10px; transform: rotate(-12deg); }
+h1 { font-size: clamp(30px, 4.6vw, 56px); line-height: 1.2; letter-spacing: -.03em; margin: 0 0 4vh; font-weight: 800; }
+ol { list-style: none; margin: 0 0 4vh; padding: 0; display: grid; gap: 14px; }
+li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 26px; display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: baseline; }
+li .n { font-size: clamp(28px, 3.6vw, 44px); font-weight: 800; color: var(--score); grid-row: span 2; line-height: 1; }
+li b { font-size: clamp(22px, 2.8vw, 34px); font-weight: 750; letter-spacing: -.02em; }
+li span { font-size: clamp(16px, 1.8vw, 22px); color: var(--muted); }
+li.last .n { color: var(--bad); }
+.goal { background: var(--hero); color: var(--herotext); border-radius: 14px; padding: 26px 32px; font-size: clamp(20px, 2.6vw, 32px); font-weight: 700; line-height: 1.4; }
+.goal em { font-style: normal; color: var(--mint); }
+@media (max-width: 600px) { li { grid-template-columns: 1fr; } li .n { grid-row: auto; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><i></i>lodog</div>
+  <h1>舊後台，agent 還用不了</h1>
+  <ol>
+    <li><span class="n">1</span><b>營運每天重複操作</b><span>查詢、核對、處理申請，想交給 agent，人只核准</span></li>
+    <li><span class="n">2</span><b>agent 看不懂、選不準、不安全</b><span>說明不全、API 太多、危險操作沒有標記</span></li>
+    <li class="last"><span class="n">3</span><b>沒人敢放手</b><span>改舊系統成本高，agent 做錯又收不回來</span></li>
+  </ol>
+  <div class="goal">目標：<em>不改舊系統一行 code</em>，讓 agent 安全地做營運操作，而且用分數證明。</div>
+</main>
+</body>
+</html>

@@ -1,0 +1,12 @@
+risks:
+  read: allow
+  money: approval
+  credential: hide
+default: money
+rules:
+  - match: "GET /players/*/resetPassword"
+    risk: credential
+  - match: "POST /players/*/bonus"
+    risk: money
+  - match: "GET /players/*"
+    risk: read

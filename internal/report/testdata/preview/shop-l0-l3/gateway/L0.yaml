@@ -1,0 +1,12 @@
+case: testdata/preview/shop-l0-l3
+level: L0
+listen: 127.0.0.1:7400
+upstream: http://127.0.0.1:7401
+auth:
+  type: cookie-session
+  login: POST /login
+  username_env: SHOP_USER
+  password_env: SHOP_PASSWORD
+identity:
+  actor: agent:test
+  on_behalf_of: user:alice

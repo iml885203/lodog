@@ -1,0 +1,23 @@
+# Anonymized backoffice regression fixture; no upstream service is bundled.
+name: backoffice
+description: Anonymized backoffice API regression fixture
+api:
+  base_url: https://localhost:7144
+  auth:
+    type: cookie-session
+    login: POST /api/operator/login
+    lockout_after_failures: 5
+    session_idle_timeout: 1d
+signals:
+  money_words: [deposit, withdraw, wallet, bonus, promotion]
+benchmark:
+  tasks: tasks.md
+  answers: expected/answers.yaml
+  reset: ./cases/backoffice/env/reset.sh
+versions:
+  - name: fixture.version
+    expect: anonymized-v1
+    observe: ./cases/backoffice/env/observe.sh version
+  - name: fixture.spec_sha256
+    expect: f1b1f1a290927a37b3299e5baa74a4e65be19d223b870fbdc75fb19acb8a0f88
+    observe: ./cases/backoffice/env/observe.sh spec
