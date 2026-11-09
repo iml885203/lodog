@@ -206,6 +206,9 @@ func codeSpans(s string) string {
 // attrOf is an attribute that names what it says by a key, in Chinese with the
 // key beside it for the script: aria-label="…" data-ia-aria-label="key".
 func attrOf(name string, m Msg) template.HTMLAttr {
+	if m.Key == "" { // a literal reads the same in both languages: no key for the script
+		return template.HTMLAttr(fmt.Sprintf(`%s="%s"`, name, template.HTMLEscapeString(m.Raw))) //nolint:gosec // G203: name is a literal of the caller, the text is escaped here
+	}
 	s := fmt.Sprintf(`%s="%s" data-ia-%s="%s"`, name, template.HTMLEscapeString(m.Zh()), name, template.HTMLEscapeString(m.Key))
 	if len(m.Args) > 0 {
 		b, _ := json.Marshal(m.Args)

@@ -46,7 +46,9 @@ for (const name of withItems) {
 
       const text = await readClipboard(page);
       expect(text.trim(), 'the clipboard is empty').not.toBe('');
-      expect(text).toBe(await page.locator('#improve-text').inputValue());
+      // the page copies the list in the language it shows
+      const lang = await page.evaluate(() => document.documentElement.lang);
+      expect(text).toBe(await page.locator(lang === 'en' ? '#improve-text-en' : '#improve-text').inputValue());
       const parts = await page.locator('#improve .iitem pre').allTextContents();
       expect(parts.length, 'items in the dialog').toBeGreaterThan(0);
       for (const part of parts) {
