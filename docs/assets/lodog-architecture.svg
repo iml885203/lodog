@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 710" width="1280" height="710" role="img" aria-label="How lodog works: prepare the spec with CLI drafts and human review, run the MCP gateway between the agent and the unchanged legacy API with approvals, and prove it with score and benchmark.">
+  <style>
+    .bg { fill: #f6f8f5; }
+    .lane { fill: #ffffff; stroke: #e0e8e3; }
+    .lab { fill: #126747; font: 600 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.06em; }
+    .labs { fill: #5d6f77; font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .node { fill: #f6f8f5; stroke: #cfdad6; stroke-width: 1.5; }
+    .gw { fill: #eef5f1; stroke: #126747; stroke-width: 2.5; }
+    .t { fill: #14222b; font: 600 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .ts { fill: #4b5d66; font: 400 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .cap { fill: #5d6f77; font: 400 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .chip { fill: #ffffff; stroke: #b9d9c7; }
+    .chipt { fill: #126747; font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .rev { fill: #fbf3ec; stroke: #e2b48c; stroke-dasharray: 5 4; }
+    .revt { fill: #8f430f; font: 500 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .hold { fill: #fbeee3; stroke: #e7b98f; }
+    .wire { stroke: #8fa39b; stroke-width: 2; fill: none; }
+    .dash { stroke: #8fa39b; stroke-width: 2; fill: none; stroke-dasharray: 6 5; }
+    .warm { stroke: #c2611f; stroke-width: 2; fill: none; }
+    .head { fill: #8fa39b; }
+    .headw { fill: #c2611f; }
+    .wl { fill: #5d6f77; font: 500 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .wlw { fill: #a14d12; font: 500 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .s { fill: #c2611f; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0f1a20; }
+      .lane { fill: #132129; stroke: #22343c; }
+      .lab { fill: #98f0c4; }
+      .labs, .cap, .wl { fill: #8ea3ab; }
+      .node { fill: #0f1a20; stroke: #2a3d46; }
+      .gw { fill: #12291f; stroke: #98f0c4; }
+      .t { fill: #edf3f4; }
+      .ts { fill: #a9bcc2; }
+      .chip { fill: #0f1a20; stroke: #24543f; }
+      .chipt { fill: #98f0c4; }
+      .rev, .hold { fill: #2b1f16; stroke: #6b4426; }
+      .revt, .wlw { fill: #f0a35e; }
+      .wire, .dash { stroke: #4f6770; }
+      .head { fill: #4f6770; }
+      .warm { stroke: #f0a35e; }
+      .headw { fill: #f0a35e; }
+      .s { fill: #f0a35e; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 Z"/></marker>
+    <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="headw" d="M0 0 L10 5 L0 10 Z"/></marker>
+  </defs>
+
+  <rect class="bg" width="1280" height="710"/>
+
+  <!-- 1 PREPARE -->
+  <rect class="lane" x="30" y="20" width="1220" height="250" rx="16"/>
+  <text class="lab" x="60" y="54">1 · PREPARE</text>
+  <text class="labs" x="190" y="54">the CLI drafts each layer, a person reviews it. No legacy code changes.</text>
+
+  <rect class="node" x="60" y="80" width="160" height="70" rx="10"/>
+  <text class="t" x="140" y="112" text-anchor="middle">swagger.json</text>
+  <text class="ts" x="140" y="132" text-anchor="middle">as it is</text>
+
+  <rect class="node" x="270" y="80" width="200" height="70" rx="10"/>
+  <text class="t" x="370" y="112" text-anchor="middle">lodog enrich</text>
+  <text class="ts" x="370" y="132" text-anchor="middle">describe every API</text>
+  <text class="cap" x="370" y="174" text-anchor="middle">overlay.yaml · L1</text>
+
+  <rect class="node" x="520" y="80" width="230" height="70" rx="10"/>
+  <text class="t" x="635" y="112" text-anchor="middle">lodog workflows draft</text>
+  <text class="ts" x="635" y="132" text-anchor="middle">~20 task tools + undo</text>
+  <text class="cap" x="635" y="174" text-anchor="middle">workflows.arazzo.yaml · L2</text>
+
+  <rect class="node" x="800" y="80" width="200" height="70" rx="10"/>
+  <text class="t" x="900" y="112" text-anchor="middle">lodog policy draft</text>
+  <text class="ts" x="900" y="132" text-anchor="middle">risk per operation</text>
+  <text class="cap" x="900" y="174" text-anchor="middle">policy.yaml · L3</text>
+
+  <rect class="node" x="1050" y="80" width="170" height="70" rx="10"/>
+  <text class="t" x="1135" y="112" text-anchor="middle">gateway/</text>
+  <text class="ts" x="1135" y="132" text-anchor="middle">L0–L3.yaml</text>
+
+  <path class="wire" d="M 222 115 H 266" marker-end="url(#a)"/>
+  <path class="wire" d="M 472 115 H 516" marker-end="url(#a)"/>
+  <path class="wire" d="M 752 115 H 796" marker-end="url(#a)"/>
+  <path class="wire" d="M 1002 115 H 1046" marker-end="url(#a)"/>
+
+  <rect class="rev" x="270" y="198" width="730" height="40" rx="8"/>
+  <text class="revt" x="635" y="223" text-anchor="middle">lodog review · open items become a few yes/no questions for a person</text>
+
+  <!-- config feeds the gateway -->
+  <path class="dash" d="M 1135 152 V 300 H 800 V 336" marker-end="url(#a)"/>
+  <text class="wl" x="1127" y="222" text-anchor="end">lodog serve -c</text>
+
+  <!-- 2 RUN -->
+  <rect class="lane" x="30" y="290" width="1220" height="250" rx="16"/>
+  <text class="lab" x="60" y="324">2 · RUN</text>
+
+  <rect class="node" x="60" y="360" width="170" height="70" rx="10"/>
+  <text class="t" x="145" y="392" text-anchor="middle">agent</text>
+  <text class="ts" x="145" y="412" text-anchor="middle">Claude Code</text>
+
+  <rect class="gw" x="320" y="340" width="560" height="110" rx="14"/>
+  <text class="t" x="340" y="368">lodog serve · MCP gateway</text>
+  <g transform="translate(854 344) scale(0.9)"><path class="s" d="M 8 0 L 10 6 L 16 8 L 10 10 L 8 16 L 6 10 L 0 8 L 6 6 Z"/></g>
+  <rect class="chip" x="340" y="388" width="120" height="36" rx="18"/>
+  <text class="chipt" x="400" y="411" text-anchor="middle">task tools</text>
+  <rect class="chip" x="472" y="388" width="232" height="36" rx="18"/>
+  <text class="chipt" x="588" y="411" text-anchor="middle">allow · hold · deny · hide</text>
+  <rect class="chip" x="716" y="388" width="148" height="36" rx="18"/>
+  <text class="chipt" x="790" y="411" text-anchor="middle">agent identity</text>
+
+  <rect class="node" x="1000" y="360" width="220" height="70" rx="10"/>
+  <text class="t" x="1110" y="392" text-anchor="middle">legacy API</text>
+  <text class="ts" x="1110" y="412" text-anchor="middle">unchanged</text>
+
+  <path class="wire" d="M 232 395 H 316" marker-end="url(#a)"/>
+  <text class="wl" x="274" y="386" text-anchor="middle">MCP</text>
+  <path class="wire" d="M 882 395 H 996" marker-end="url(#a)"/>
+  <text class="wl" x="939" y="386" text-anchor="middle">HTTP</text>
+
+  <rect class="hold" x="490" y="482" width="300" height="42" rx="8"/>
+  <text class="revt" x="640" y="508" text-anchor="middle">approver · confirm prompt or Slack</text>
+  <path class="warm" d="M 580 452 V 478" marker-end="url(#aw)"/>
+  <text class="wlw" x="572" y="470" text-anchor="end">hold</text>
+  <path class="warm" d="M 700 480 V 454" marker-end="url(#aw)"/>
+  <text class="wlw" x="708" y="470">approve</text>
+
+  <!-- 3 PROVE -->
+  <rect class="lane" x="30" y="560" width="1220" height="130" rx="16"/>
+  <text class="lab" x="60" y="594">3 · PROVE</text>
+
+  <rect class="node" x="60" y="612" width="340" height="56" rx="10"/>
+  <text class="t" x="80" y="645">lodog score</text>
+  <text class="ts" x="190" y="645">/30 + L4 fix prompts</text>
+
+  <rect class="node" x="450" y="612" width="380" height="56" rx="10"/>
+  <text class="t" x="470" y="645">lodog bench</text>
+  <text class="ts" x="580" y="645">task success · 0 unapproved</text>
+
+  <rect class="node" x="880" y="612" width="340" height="56" rx="10"/>
+  <text class="t" x="900" y="645">lodog report</text>
+  <text class="ts" x="1020" y="645">before/after per level</text>
+
+  <path class="wire" d="M 832 640 H 876" marker-end="url(#a)"/>
+</svg>

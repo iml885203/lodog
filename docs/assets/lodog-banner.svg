@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="lodog: teach old APIs new tricks. MCP gateway and readiness benchmark for legacy APIs.">
+  <style>
+    .bg { fill: #f6f8f5; }
+    .grid { stroke: #e3e9e4; stroke-width: 1; }
+    .w { fill: #14222b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .logo { font-size: 30px; font-weight: 800; letter-spacing: -1.5px; }
+    .tag { font-size: 40px; font-weight: 700; letter-spacing: -0.8px; }
+    .sub { fill: #4b5d66; font-size: 21px; font-weight: 400; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .g { fill: none; stroke: #126747; stroke-linejoin: round; }
+    .s { fill: #c2611f; }
+    .chip { fill: #e6f1eb; stroke: #b9d9c7; }
+    .chipt { fill: #126747; font-size: 15px; }
+    .node { fill: #ffffff; stroke: #cfdad6; stroke-width: 1.5; }
+    .nodet { fill: #14222b; font-size: 18px; font-weight: 600; }
+    .cap { fill: #6b7d85; font-size: 13px; }
+    .wire { stroke: #8fa39b; stroke-width: 2; fill: none; }
+    .head { fill: #8fa39b; }
+    .score { fill: #14222b; }
+    .scoret { fill: #f6f8f5; font-size: 15px; }
+    .scoren { fill: #98f0c4; font-size: 15px; font-weight: 700; }
+    .hold { fill: #fbeee3; stroke: #e7b98f; }
+    .holdt { fill: #a14d12; font-size: 14px; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0f1a20; }
+      .grid { stroke: #17262e; }
+      .w { fill: #edf3f4; }
+      .sub { fill: #9fb3ba; }
+      .g { stroke: #98f0c4; }
+      .s { fill: #f0a35e; }
+      .chip { fill: #143127; stroke: #24543f; }
+      .chipt { fill: #98f0c4; }
+      .node { fill: #16252d; stroke: #2a3d46; }
+      .nodet { fill: #edf3f4; }
+      .cap { fill: #7f949c; }
+      .wire { stroke: #4f6770; }
+      .head { fill: #4f6770; }
+      .score { fill: #edf3f4; }
+      .scoret { fill: #0f1a20; }
+      .scoren { fill: #126747; }
+      .hold { fill: #33241a; stroke: #6b4426; }
+      .holdt { fill: #f0a35e; }
+    }
+  </style>
+
+  <rect class="bg" width="1280" height="400"/>
+  <g class="grid">
+    <path d="M0 80H1280M0 160H1280M0 240H1280M0 320H1280"/>
+    <path d="M720 0V400M800 0V400M880 0V400M960 0V400M1040 0V400M1120 0V400M1200 0V400"/>
+  </g>
+
+  <!-- Wordmark: the first o of "lodog" is a gate, the spark is the new trick. -->
+  <g transform="translate(70 52) scale(3)">
+    <text class="w logo" x="2" y="35">l</text>
+    <g transform="rotate(-12 21 27)">
+      <path class="g" stroke-width="3.2" d="M 14.5 36 L 14.5 20.5 A 6.5 6.5 0 0 1 27.5 20.5 L 27.5 36 Z"/>
+    </g>
+    <path class="s" d="M 32 3 L 33.4 7.1 L 37.5 8.5 L 33.4 9.9 L 32 14 L 30.6 9.9 L 26.5 8.5 L 30.6 7.1 Z"/>
+    <text class="w logo" x="37" y="35">dog</text>
+  </g>
+
+  <text class="w tag" x="76" y="250">Teach old APIs new tricks.</text>
+  <text class="w sub" x="78" y="290">MCP gateway + readiness benchmark for legacy APIs.</text>
+
+  <g class="mono">
+    <rect class="chip" x="78" y="318" width="168" height="32" rx="16"/>
+    <text class="chipt" x="162" y="339" text-anchor="middle">no code changes</text>
+    <rect class="chip" x="258" y="318" width="168" height="32" rx="16"/>
+    <text class="chipt" x="342" y="339" text-anchor="middle">any Swagger API</text>
+    <rect class="chip" x="438" y="318" width="168" height="32" rx="16"/>
+    <text class="chipt" x="522" y="339" text-anchor="middle">human approval</text>
+  </g>
+
+  <!-- Flow: agent -> lodog gate -> legacy API -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head" d="M0 0 L10 5 L0 10 Z"/>
+    </marker>
+  </defs>
+
+  <g class="mono">
+    <!-- score badge -->
+    <rect class="score" x="905" y="58" width="170" height="34" rx="17"/>
+    <text class="scoret" x="990" y="80" text-anchor="middle">lodog score <tspan class="scoren">27/30</tspan></text>
+
+    <!-- agent -->
+    <rect class="node" x="745" y="172" width="130" height="58" rx="12"/>
+    <text class="nodet" x="810" y="207" text-anchor="middle">agent</text>
+    <text class="cap" x="810" y="252" text-anchor="middle">Claude Code</text>
+
+    <!-- legacy -->
+    <rect class="node" x="1105" y="172" width="140" height="58" rx="12"/>
+    <text class="nodet" x="1175" y="207" text-anchor="middle">legacy API</text>
+    <text class="cap" x="1175" y="252" text-anchor="middle">swagger.json</text>
+
+    <path class="wire" d="M 878 201 H 942" marker-end="url(#arrow)"/>
+    <path class="wire" d="M 1040 201 H 1100" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- the gate -->
+  <g>
+    <path class="g" stroke-width="7" d="M 958 262 L 958 158 A 32 32 0 0 1 1022 158 L 1022 262 Z"/>
+  </g>
+  <path class="s" d="M 1046 104 L 1050 116 L 1062 120 L 1050 124 L 1046 136 L 1042 124 L 1030 120 L 1042 116 Z"/>
+
+  <!-- held request -->
+  <g class="mono">
+    <rect class="hold" x="868" y="300" width="244" height="32" rx="8"/>
+    <text class="holdt" x="990" y="321" text-anchor="middle">DELETE /users/42 · held</text>
+  </g>
+</svg>
