@@ -188,6 +188,12 @@
   }
   @media (max-width: 560px) {
     header { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    header nav.wrap { padding: 4px 16px; }
+    header .trick { display: inline-flex; align-items: center; min-height: 36px; }
+    header .trick svg { width: 80px; height: 30px; }
+    header .btn { position: relative; min-height: 36px; padding: 0 14px; gap: 6px; font-size: 14px; }
+    header .btn::after { content: ""; position: absolute; inset: -4px 0; }
+    header .btn svg { width: 14px; height: 14px; }
   }
 
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out); }
