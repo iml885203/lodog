@@ -180,6 +180,16 @@
   footer .wrap { padding-top: 28px; padding-bottom: 36px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; font-size: 14px; color: var(--soft); }
   footer .links { display: flex; flex-wrap: wrap; gap: 24px; }
 
+  @media (max-width: 899px) {
+    .shot, .t-report:hover .shot { width: 100%; min-height: 0; flex: 0 0 auto; transform: none; }
+    .shot img { height: auto; }
+    .bento, .principles, .levels { padding-left: 16px; padding-right: 16px; }
+    .prow { flex-wrap: wrap; }
+  }
+  @media (max-width: 560px) {
+    header { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
+
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out); }
   .reveal.in { opacity: 1; transform: none; }
   @media (prefers-reduced-motion: reduce) {
